@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="author" content="Kuan-Wei Lee">
+<meta name="copyright" content="© 2026 Kuan-Wei Lee. All rights reserved.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 驗光紀錄輔助學習系統 V0.6.3 Beta</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f0ede8;--surface:#faf9f6;--card:#ffffff;--border:#ddd8d0;
+  --primary:#1a4a6b;--primary-light:#e8f0f7;--accent:#c8832a;
+  --text:#1c1c1c;--muted:#7a7570;--danger:#b03030;--success:#2d6a4f;
+  --warn:#8a5500;--warn-bg:#fff8e6;
+  --font-head:'Noto Serif TC',serif;--font-body:'Noto Sans TC',sans-serif;
+}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+
+/* ── 頂欄 ── */
+.topbar{background:var(--primary);color:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.25);}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.topbar-title{font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:.03em;}
+.topbar-sub{font-size:10px;opacity:.6;margin-top:1px;}
+.status-pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);border-radius:999px;padding:4px 12px;font-size:11px;}
+.dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.dot.ok{background:#5cdb95;}.dot.err{background:#e55;}
+.dot.checking{background:#f4a261;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* ── 導覽 ── */
+nav{background:var(--card);border-bottom:1px solid var(--border);display:flex;padding:0 20px;gap:2px;}
+.tab{padding:12px 16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;font-family:var(--font-body);display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.tab:hover{color:var(--text);}.tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+
+/* ── 佈局 ── */
+.wrap{max-width:1200px;margin:0 auto;padding:18px;}
+.page{display:none;}.page.active{display:block;}
+
+/* ── 卡片 ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:6px;}
+.card-blue{background:var(--primary-light);border-color:#b8d0e8;}
+.card-warn{background:var(--warn-bg);border-color:#f0d090;}
+
+/* ── 表單 ── */
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:12px;color:var(--muted);font-weight:600;}
+.fg input,.fg select,.fg textarea{font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);outline:none;transition:border-color .15s;font-family:var(--font-body);}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(26,74,107,.1);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* ── 按鈕 ── */
+.btn{background:var(--primary);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-weight:700;font-family:var(--font-body);transition:all .15s;}
+.btn:hover{background:#0f3050;transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn.g{background:var(--success);}.btn.g:hover{background:#1b4332;}
+.btn.o{background:#fff;color:var(--text);border:1px solid var(--border);}.btn.o:hover{background:var(--bg);}
+.btn.danger{background:var(--danger);}.btn.danger:hover{background:#8b2020;}
+.btn.accent{background:var(--accent);}.btn.accent:hover{background:#a06520;}
+
+/* ── 攝影機區 ── */
+.cam-wrap{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:4/3;max-height:420px;}
+#cam-video{width:100%;height:100%;object-fit:cover;display:block;}
+#cam-canvas{display:none;}
+.cam-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;}
+.cam-overlay.hidden{display:none;}
+.capture-btn{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.92);border:none;border-radius:999px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 2px 12px rgba(0,0,0,.3);transition:all .15s;font-family:var(--font-body);}
+.capture-btn:hover{background:#fff;transform:translateX(-50%) translateY(-2px);}
+.cam-corner{position:absolute;width:20px;height:20px;border-color:#5cdb95;border-style:solid;border-width:0;opacity:.8;}
+.cam-corner.tl{top:10px;left:10px;border-top-width:3px;border-left-width:3px;}
+.cam-corner.tr{top:10px;right:10px;border-top-width:3px;border-right-width:3px;}
+.cam-corner.bl{bottom:10px;left:10px;border-bottom-width:3px;border-left-width:3px;}
+.cam-corner.br{bottom:10px;right:10px;border-bottom-width:3px;border-right-width:3px;}
+.live-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(220,30,30,.85);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.05em;display:flex;align-items:center;gap:5px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1s infinite;}
+.preview-img{width:100%;border-radius:10px;border:1px solid var(--border);max-height:300px;object-fit:contain;background:#f5f5f5;}
+.thumb-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.thumb{position:relative;width:72px;height:90px;border-radius:7px;overflow:hidden;border:2px solid var(--border);}
+.thumb img{width:100%;height:100%;object-fit:cover;}
+.thumb .del{position:absolute;top:2px;right:2px;background:rgba(180,0,0,.85);color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.thumb .num{position:absolute;bottom:2px;left:2px;background:rgba(26,74,107,.85);color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;}
+
+/* ── 評分結果 ── */
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;max-height:500px;overflow-y:auto;font-family:var(--font-body);}
+.result-box table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0;}
+.result-box th{background:#e8f0f7;color:var(--primary);padding:6px 8px;text-align:left;font-size:11px;border:1px solid #c0d4e8;}
+.result-box td{padding:6px 8px;border:1px solid #ddd;vertical-align:top;}
+.score-badge{display:inline-flex;align-items:center;gap:4px;background:var(--primary);color:#fff;border-radius:8px;padding:4px 12px;font-size:22px;font-weight:700;font-family:var(--font-head);}
+.score-label{font-size:11px;opacity:.7;}
+
+/* ── 分數預覽條 ── */
+.score-preview{display:flex;flex-direction:column;gap:6px;}
+.sp-row{display:flex;align-items:center;gap:8px;}
+.sp-label{font-size:11px;color:var(--muted);width:140px;flex-shrink:0;}
+.sp-bar{flex:1;height:8px;background:#eee;border-radius:999px;overflow:hidden;}
+.sp-fill{height:100%;border-radius:999px;background:var(--primary);transition:width .5s ease;}
+.sp-val{font-size:12px;font-weight:700;width:50px;text-align:right;}
+
+/* ── 記錄列表 ── */
+table.rec{width:100%;border-collapse:collapse;font-size:13px;}
+table.rec th{text-align:left;padding:9px 10px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:#fafaf8;white-space:nowrap;}
+table.rec td{padding:9px 10px;border-bottom:1px solid #f0ede8;vertical-align:middle;}
+table.rec tr:hover td{background:#f8f8f6;}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;}
+.badge-a{background:#e8f5e9;color:#1b5e20;}
+.badge-b{background:#e3f2fd;color:#0d47a1;}
+.badge-warn{background:#fff8e1;color:#6d4c00;}
+
+/* ── 搜尋欄 ── */
+.search-bar{display:flex;gap:8px;margin-bottom:12px;}
+.search-bar input{flex:1;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;outline:none;font-family:var(--font-body);}
+.search-bar input:focus{border-color:var(--primary);}
+
+/* ── 分析統計 ── */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+.stat-n{font-size:24px;font-weight:700;font-family:var(--font-head);color:var(--primary);}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── 分頁轉場 ── */
+.page.active{animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 載入動畫 ── */
+.loading-dots span{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--primary);animation:dp 1.2s infinite ease-in-out;margin:0 2px;}
+.loading-dots span:nth-child(2){animation-delay:.2s}.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dp{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:22px;right:22px;background:#1c1c1c;color:#f5f4f0;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,.25);animation:toastIn .2s ease;}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── 捲動條 ── */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px;}
+
+/* ── 詳情 Modal ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--card);border-radius:14px;max-width:860px;width:100%;max-height:90vh;overflow-y:auto;padding:24px;}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.modal-close{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 12px;cursor:pointer;font-size:13px;font-family:var(--font-body);}
+
+/* ── 說明標籤 ── */
+.hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
+
+/* ── 分隔線 ── */
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ── 頂欄 ── -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">👁</div>
+    <div>
+      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.3 Beta</span></div>
+      <div class="topbar-sub">馬偕醫護管理專科學校・視光學科｜V3.3 紙本紀錄辨識・規則檢核・個人化學習回饋・Google Sheet 班級資料</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <button class="btn o" id="adminLogoutBtn" style="display:none;padding:5px 10px;font-size:11px;color:#fff;border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.10);" onclick="logoutAdmin()">🔒 鎖定後台</button>
+    <div class="status-pill">
+      <div class="dot checking" id="sdot"></div>
+      <span id="stxt">初始化中...</span>
+    </div>
+    <button class="btn o" style="padding:5px 10px;font-size:11px;" onclick="recheckStatus()">重新檢查</button>
+  </div>
+</div>
+
+<!-- ── 導覽 ── -->
+<nav>
+  <button class="tab active" onclick="gp('scan')" id="tab-scan">📷 拍照分析</button>
+  <button class="tab" onclick="gp('upload')" id="tab-upload">🖼 上傳紀錄表</button>
+  <button class="tab" onclick="gp('records')" id="tab-records">🔒 教師紀錄</button>
+  <button class="tab" onclick="gp('stats')" id="tab-stats">🔒 教師分析</button>
+  <button class="tab" onclick="gp('cfg')" id="tab-cfg">🔐 後台設定</button>
+</nav>
+
+<div class="wrap">
+
+<!-- ═══════════════════════════════════════
+     頁面：攝影機評分
+════════════════════════════════════════ -->
+<div class="page active" id="page-scan">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+    <!-- 左：攝影機 + 操作 -->
+    <div>
+      <div class="card">
+        <div class="card-title">📷 即時攝影機</div>
+        <div class="cam-wrap" id="camWrap">
+          <video id="cam-video" autoplay playsinline muted></video>
+          <canvas id="cam-canvas"></canvas>
+          <div class="cam-overlay" id="camOverlay">
+            <div style="font-size:28px;">📷</div>
+            <div>點擊下方按鈕啟動攝影機</div>
+          </div>
+          <div class="cam-corner tl"></div>
+          <div class="cam-corner tr"></div>
+          <div class="cam-corner bl"></div>
+          <div class="cam-corner br"></div>
+          <div class="live-badge" id="liveBadge" style="display:none;"><div class="live-dot"></div>LIVE</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn" onclick="startCam()" id="btnStartCam">▶ 啟動攝影機</button>
+          <button class="btn accent" onclick="captureFrame()" id="btnCapture" disabled>📸 擷取畫面</button>
+          <button class="btn o" onclick="stopCam()" id="btnStopCam" disabled>⏹ 停止</button>
+          <button class="btn o" onclick="clearCaptures()" style="margin-left:auto;">🗑 清除擷取</button>
+        </div>
+        <div id="camDevices" style="margin-top:8px;display:none;">
+          <div class="fg"><label>選擇攝影機</label>
+          <select id="camSel" onchange="switchCam()"></select></div>
+        </div>
+        <div class="hint" style="margin-top:8px;">💡 請依序拍攝紀錄表第 1、2 頁，確保表格四角、勾選框與手寫數值清楚可見；送出後系統會先辨識，再執行規則檢核與個人化回饋。</div>
+      </div>
+
+      <!-- 擷取預覽 -->
+      <div class="card" id="capturePreviewCard" style="display:none;">
+        <div class="card-title">🖼 已擷取畫面 <span id="captureCount" style="background:var(--primary);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;">0</span></div>
+        <div class="thumb-strip" id="thumbStrip"></div>
+      </div>
+
+      <!-- 學生基本資料 -->
+      <div class="card">
+        <div class="card-title">👤 學生基本資料</div>
+        <div class="g3" style="gap:10px;">
+          <div class="fg"><label>學生姓名 *</label><input type="text" id="s-name" placeholder="請填入姓名"></div>
+          <div class="fg"><label>學號 *</label><input type="text" id="s-seq" placeholder="學生學號"></div>
+          <div class="fg"><label>班級</label><input type="text" id="s-class" placeholder="例如：五視一孝"></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="fg"><label>備註（選填）</label><input type="text" id="s-note" placeholder="本次練習備註..."></div>
+        </div>
+      </div>
+
+      <!-- 送出評分 -->
+      <button class="btn accent" style="width:100%;justify-content:center;font-size:15px;padding:13px;" onclick="submitScan()">
+        🤖 AI 分析我的驗光紀錄
+      </button>
+    </div>
+
+    <!-- 右：評分結果 -->
+    <div>
+      <div class="card" style="position:sticky;top:62px;">
+        <div class="card-title">🧠 AI 學習回饋</div>
+        <div id="scanResult" style="min-height:360px;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;gap:12px;color:var(--muted);">
+            <div style="font-size:48px;">📄</div>
+            <div style="font-size:13px;">拍攝兩頁紀錄表後點擊「AI 分析我的驗光紀錄」</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     頁面：上傳評分
+════════════════════════════════════════ -->
+<div class="page" id="page-upload">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div>
+      <!-- 上傳區 -->
+      <div class="card">
+        <div class="card-title">🖼 上傳文件（照片或 PDF）</div>
+        <div style="border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:#fafaf8;" id="upZone"
+          onclick="document.getElementById('upInput').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--primary)'"
+          ondragleave="this.style.borderColor='var(--border)'"
+          ondrop="handleDrop(event)">
+          <div id="upPh">
+            <div style="font-size:36px;margin-bottom:8px;">📎</div>
+            <div style="font-size:13px;color:var(--muted);">點擊或拖曳上傳</div>
+            <div style="font-size:11px;color:#bbb;margin-top:4px;">支援 JPG、PNG、PDF；建議上傳完整兩頁 V3.3 紀錄表（多頁 PDF 會自動逐頁轉圖）</div>
+          </div>
+          <div id="upProgress" style="display:none;padding:8px 0;">
+            <div style="font-size:12px;color:var(--primary);margin-bottom:6px;" id="upProgressTxt">轉換中...</div>
+            <div style="height:6px;background:#eee;border-radius:999px;overflow:hidden;">
+              <div id="upProgressBar" style="height:100%;background:var(--primary);border-radius:999px;width:0%;transition:width .3s;"></div>
+            </div>
+          </div>
+          <div id="upThumbs" class="thumb-strip" style="display:none;justify-content:center;"></div>
+        </div>
+        <input type="file" id="upInput" accept="image/*,.pdf,application/pdf" multiple style="display:none" onchange="handleUpload(event)">
+        <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
+          <button class="btn o" onclick="document.getElementById('upInput').click()">➕ 新增檔案</button>
+          <div style="font-size:11px;color:var(--muted);">已載入 <span id="upCount">0</span> 頁</div>
+          <button class="btn o" onclick="clearUploads()" style="margin-left:auto;">🗑 清除</button>
+        </div>
+      </div>
+
+      <!-- 學生資料 -->
+      <div class="card">
+        <div class="card-title">👤 學生基本資料</div>
+        <div class="g3" style="gap:10px;">
+          <div class="fg"><label>學生姓名 *</label><input type="text" id="u-name" placeholder="請填入姓名"></div>
+          <div class="fg"><label>學號 *</label><input type="text" id="u-seq" placeholder="學生學號"></div>
+          <div class="fg"><label>班級</label><input type="text" id="u-class" placeholder="例如：五視一孝"></div>
+        </div>
+        <div style="margin-top:8px;">
+          <div class="fg"><label>備註（選填）</label><input type="text" id="u-note" placeholder="本次練習備註..."></div>
+        </div>
+      </div>
+
+      <button class="btn accent" style="width:100%;justify-content:center;font-size:15px;padding:13px;" onclick="submitUpload()">
+        🤖 AI 分析我的驗光紀錄
+      </button>
+    </div>
+
+    <!-- 右：結果 -->
+    <div>
+      <div class="card" style="position:sticky;top:62px;">
+        <div class="card-title">🧠 AI 學習回饋</div>
+        <div id="uploadResult" style="min-height:360px;">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:320px;gap:12px;color:var(--muted);">
+            <div style="font-size:48px;">📄</div>
+            <div style="font-size:13px;">上傳兩頁紀錄表後點擊「AI 分析我的驗光紀錄」</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     頁面：學習紀錄
+════════════════════════════════════════ -->
+<div class="page" id="page-records">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div class="card-title" style="margin-bottom:0;">📚 學習紀錄 <span id="recCount" style="background:var(--primary);color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;">0</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn o" onclick="exportCSV()">⬇ 匯出 CSV</button>
+        <button class="btn danger" onclick="clearAllRecords()">🗑 清除全部記錄</button>
+      </div>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="recSearch" placeholder="🔍 搜尋姓名、學號..." oninput="renderRecords()">
+      <select id="recSort" onchange="renderRecords()" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:var(--font-body);font-size:13px;background:#fff;">
+        <option value="date-desc">最新在前</option>
+        <option value="date-asc">最舊在前</option>
+        <option value="score-desc">總分高→低</option>
+        <option value="score-asc">總分低→高</option>
+        <option value="name">姓名排序</option>
+      </select>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="rec">
+        <thead>
+          <tr>
+            <th>序號</th><th>姓名</th><th>學號</th><th>分析日期</th>
+            <th>完整性</th><th>格式</th><th>一致性</th><th>臨床推理</th><th>總分</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="recBody"></tbody>
+      </table>
+    </div>
+    <div id="recEmpty" style="display:none;text-align:center;padding:40px;color:var(--muted);">尚無學習紀錄</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     頁面：統計分析
+════════════════════════════════════════ -->
+<div class="page" id="page-stats">
+  <div class="stat-grid" id="statGrid"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="card">
+      <div class="card-title">📈 成績分布</div>
+      <div id="distChart" style="min-height:200px;"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📌 最近學習紀錄</div>
+      <div id="rankList" style="max-height:400px;overflow-y:auto;"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px;">
+    <div class="card-title">⚠️ 優先複習／人工確認</div>
+    <div id="reviewList"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     頁面：設定
+════════════════════════════════════════ -->
+<div class="page" id="page-cfg">
+  <div class="card card-blue">
+    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.3 Pilot：使用者自己的 Key）</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="fg">
+        <label>Gemini API Key</label>
+        <div style="display:flex;gap:6px;">
+          <input type="password" id="cfg-gkey" placeholder="AQ... 或 AIza..." style="flex:1;">
+          <button class="btn o" onclick="togglePass('cfg-gkey','btn-eye')" id="btn-eye" style="padding:8px 12px;font-size:12px;">👁 顯示</button>
+        </div>
+        <div class="hint">V0.6.3 使用 Gemini 3.6 Flash（Google 對新使用者建議的穩定 Flash 模型）。支援 Google AI Studio 新式 AQ 授權金鑰與舊式受限 AIza 金鑰；請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
+      </div>
+      <div class="fg">
+        <label>使用模型</label>
+        <select id="cfg-gmodel">
+          <option value="gemini-3.6-flash">gemini-3.6-flash（目前測試基準・建議）</option>
+          <option value="gemini-3.8-flash">gemini-3.8-flash（最新穩定版・後續比較）</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn g" onclick="saveCfg()">💾 儲存設定</button>
+        <button class="btn o" onclick="testAPI()">🔌 測試 Gemini</button>
+        <div id="cfgResult" style="font-size:12px;color:var(--muted);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">☁️ Google Sheet 班級後台</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="fg">
+        <label>Google Apps Script Web App URL</label>
+        <input type="url" id="cfg-sheet-endpoint" placeholder="https://script.google.com/macros/s/.../exec">
+        <div class="hint">分析完成後只同步去識別化的學習資料與 JSON，不上傳原始紀錄影像。</div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>課程名稱</label><input type="text" id="cfg-course" placeholder="視光學實驗"></div>
+        <div class="fg"><label>預設班級</label><input type="text" id="cfg-class" placeholder="例如：五視一孝"></div>
+      </div>
+      <div class="fg">
+        <label>班級同步碼（選填）</label>
+        <input type="password" id="cfg-sheet-token" placeholder="與 Apps Script 的 CLASS_TOKEN 相同">
+        <div class="hint">這不是高強度身分驗證，但可降低公開 Web App 被隨意寫入的機率。</div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="cfg-sync-enabled" checked> 分析完成後自動同步 Google Sheet
+      </label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn g" onclick="saveCfg()">💾 儲存後台設定</button>
+        <button class="btn o" onclick="testSheetSync()">☁️ 測試送出</button>
+        <div id="sheetResult" style="font-size:12px;color:var(--muted);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚙️ 教學設定</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="fg">
+        <label>教師／評閱者（顯示於紀錄）</label>
+        <input type="text" id="cfg-reviewer" placeholder="例如：李冠緯老師">
+      </div>
+      <div class="fg">
+        <label>攝影機影像品質</label>
+        <select id="cfg-quality">
+          <option value="high">高畫質（1920×1080）</option>
+          <option value="medium" selected>中畫質（1280×720）建議</option>
+          <option value="low">低畫質（640×480）</option>
+        </select>
+      </div>
+      <button class="btn g" onclick="saveCfg()">💾 儲存</button>
+    </div>
+  </div>
+
+  <div class="card card-warn">
+    <div class="card-title" style="color:var(--warn);">📌 V0.6 Classroom Pilot 說明</div>
+    <div style="font-size:12px;line-height:1.9;color:#5a4a00;">
+      • 本系統辨識固定版型「眼睛及健康篩檢紀錄表 V3.3」，並以 Recording correctness 為主要規則標準。<br>
+      • V0.6 不自行建立疾病診斷或轉介數值門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
+      • 原始影像只保存在目前裝置 IndexedDB；Google Sheet 僅接收學生學習資料、分數、規則結果與去識別化 JSON。<br>
+      • A 區受檢者個人識別資料不納入 AI 結構化輸出。上傳前仍應採匿名或去識別化教學流程。<br>
+      • 教師紀錄、學習分析與後台設定已加上 session 密碼鎖；此為前端存取控制，正式版仍應改用後端身分驗證。<br>
+      • V0.6 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
+      • © 2026 Kuan-Wei Lee. All rights reserved.
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- ── 詳情 Modal ── -->
+<div class="modal-bg" id="detailModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;" id="modalName">—</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="modalMeta">—</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn g" id="modalDlBtn" onclick="" style="font-size:12px;padding:6px 14px;">📦 下載整包</button>
+        <button class="modal-close" onclick="closeModal()">✕ 關閉</button>
+      </div>
+    </div>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- ── 教師後台密碼 Modal ── -->
+<div class="modal-bg" id="adminGateModal">
+  <div class="modal" style="max-width:430px;">
+    <div class="modal-head" style="margin-bottom:12px;">
+      <div>
+        <div style="font-family:var(--font-head);font-size:18px;font-weight:700;">🔐 教師後台</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">教師紀錄、學習分析與後台設定需要管理密碼</div>
+      </div>
+      <button class="modal-close" onclick="closeAdminGate()">✕</button>
+    </div>
+    <div class="fg">
+      <label>管理密碼</label>
+      <input type="password" id="adminPasswordInput" autocomplete="current-password" placeholder="請輸入教師後台密碼" onkeydown="if(event.key==='Enter') submitAdminPassword()">
+    </div>
+    <div id="adminGateError" style="display:none;margin-top:8px;padding:8px 10px;background:#ffebee;color:#b71c1c;border-radius:8px;font-size:12px;"></div>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
+      <button class="btn o" onclick="closeAdminGate()">取消</button>
+      <button class="btn" onclick="submitAdminPassword()">🔓 進入後台</button>
+    </div>
+    <div class="hint" style="margin-top:12px;">本次授權只保留在目前瀏覽器分頁的 session；關閉分頁後會重新鎖定。</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  設定 & 資料
+// ═══════════════════════════════════════════════════
+const APP_META = {
+  systemVersion:'V0.6.3 Beta',
+  formVersion:'V3.3',
+  schemaVersion:'3.3.0',
+  ruleVersion:'V0.6-recording-v3.3',
+  promptVersion:'V0.6-v3.3'
+};
+
+// 教師後台密碼：僅保存 SHA-256 雜湊，不在前端原始碼保存明文。
+// 注意：GitHub Pages 為純前端網站，此機制屬「介面存取控制」，不是伺服器級身分驗證。
+const ADMIN_PASSWORD_SHA256 = 'bd909746717410b829c3468e7dc837dbf55ddebeb83e47a033f9f0c3530423c1';
+const ADMIN_PROTECTED_PAGES = new Set(['records','stats','cfg']);
+let pendingAdminPage = 'cfg';
+
+let C = {
+  gkey:          localStorage.getItem('voc_gkey')          || '',
+  gmodel:        localStorage.getItem('voc_gmodel')        || 'gemini-3.6-flash',
+  reviewer:      localStorage.getItem('voc_reviewer')      || '李冠緯老師',
+  course:        localStorage.getItem('voc_course')        || '視光學實驗',
+  classDefault:  localStorage.getItem('voc_class')         || '',
+  quality:       localStorage.getItem('voc_quality')       || 'medium',
+  sheetEndpoint: localStorage.getItem('voc_sheet_endpoint')|| '',
+  sheetToken:    localStorage.getItem('voc_sheet_token')   || '',
+  syncEnabled:   localStorage.getItem('voc_sync_enabled') !== 'false'
+};
+
+// V0.6.2 模型遷移：新使用者已無法使用 gemini-2.5-flash 時，自動改成 3.6 Flash。
+const LEGACY_GEMINI_MODELS = new Set(['gemini-2.5-flash','gemini-2.5-flash-preview-05-20','gemini-2.0-flash','gemini-2.0-flash-001']);
+if (LEGACY_GEMINI_MODELS.has(C.gmodel)) {
+  C.gmodel = 'gemini-3.6-flash';
+  localStorage.setItem('voc_gmodel', C.gmodel);
+}
+
+let records = JSON.parse(localStorage.getItem('voc_records') || '[]');
+function saveRecords(){ localStorage.setItem('voc_records', JSON.stringify(records)); }
+
+// ═══════════════════════════════════════════════════
+//  IndexedDB：影像儲存（不佔 localStorage 空間）
+// ═══════════════════════════════════════════════════
+let imgDB = null;
+
+function openImgDB(){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open('VocImgDB', 1);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore('imgs', {keyPath:'id'});
+    };
+    req.onsuccess = e => { imgDB = e.target.result; res(imgDB); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+function saveImgs(recId, images){
+  // images: [{b64, mime}]
+  return new Promise((res,rej)=>{
+    const tx = imgDB.transaction('imgs','readwrite');
+    const st = tx.objectStore('imgs');
+    st.put({id: String(recId), images});
+    tx.oncomplete = ()=>res();
+    tx.onerror    = e=>rej(e.target.error);
+  });
+}
+
+function loadImgs(recId){
+  return new Promise((res,rej)=>{
+    const tx = imgDB.transaction('imgs','readonly');
+    const req = tx.objectStore('imgs').get(String(recId));
+    req.onsuccess = e => res(e.target.result ? e.target.result.images : []);
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+function deleteImgs(recId){
+  return new Promise((res)=>{
+    const tx = imgDB.transaction('imgs','readwrite');
+    tx.objectStore('imgs').delete(String(recId));
+    tx.oncomplete = ()=>res();
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  System Prompt（完整在職班版）
+// ═══════════════════════════════════════════════════
+const EXTRACTION_PROMPT = `你是「AI 驗光紀錄輔助學習系統 V0.6」的固定表單影像辨識模組。
+你的任務只有「讀取與結構化」，不是替學生診斷、不是自行補值、也不是先打分。
+
+【目標表單】
+固定版型：馬偕視光「眼睛及健康篩檢紀錄表」V3.3，共 2 頁。
+Recording 主要標準：Carlson & Kurtz 4e；Elliott, Clinical Procedures in Primary Eye Care, 4e 中等效且完整紀錄亦可接受。
+
+【隱私規則】
+1. A 區個人識別資料完全忽略，不得輸出受檢者姓名、身分證字號、電話、地址、出生日期或病歷號。
+2. 網站另行輸入的「學生姓名／學號／班級」不從受檢者表單擷取。
+
+【辨識規則】
+1. 只能回傳影像中明確可見內容；禁止推測、補值或自行換算成標準答案。
+2. 看不清時 value 填 null、confidence 0~1，並列入 uncertain_fields。
+3. 勾選框辨識 checked / unchecked / uncertain；文字記錄保留原意。
+4. 處方保留正負號、數字、軸度、稜鏡與 Base，不自行 transpose。
+5. OD / OS / OU、Distance / Near、sc / cc 不得互換。
+6. NCT/IOP 三次原始值逐筆保留，不自行計算平均。
+7. Slit Lamp 與 Posterior Segment 必須 OD、OS 分開結構化。
+8. 若缺頁、錯頁、裁切嚴重或非 V3.3，寫入 document_warnings。
+9. 所有文字使用繁體中文。
+10. 僅輸出 JSON，不得加 Markdown code fence。
+
+【固定 JSON 結構】
+{
+  "document":{"form_version":"V3.3|unknown","pages_detected":0,"readability":"good|partial|poor","document_warnings":[]},
+  "B":{
+    "chief_complaints":[],"ocular_history":[],"correction_history":[],"systemic_history":[],"family_ocular_history":[],
+    "drug_allergy":{"status":null,"detail":null,"confidence":0},"current_medication":{"value":null,"confidence":0}
+  },
+  "C":{
+    "cover_test":{"rx":null,"distance":{"value":null,"confidence":0},"near":{"value":null,"confidence":0}},
+    "eom_motility":{"status":null,"detail":null,"nine_point":null,"confidence":0},
+    "stereopsis":{"test":null,"rx":null,"result_type":null,"seconds_arc":null,"threshold_arcsec":null,"confidence":0},
+    "color_vision":{"test":null,"od_score":null,"os_score":null,"interpretation":null,"confidence":0},
+    "iop_nct":{"time":null,"OD":{"readings":[]},"OS":{"readings":[]},"confidence":0},
+    "worth4dot":{"distance":null,"near":null,"lighting":null,"interpretation":null,"confidence":0},
+    "npc":{"target":null,"break_cm":null,"recovery_cm":null,"confidence":0},
+    "pupils":{"value":null,"confidence":0},
+    "screening_vf":{"OD":null,"OS":null,"confidence":0},
+    "alignment_test":{"technique":null,"result":null,"confidence":0},
+    "accommodation":{"method":null,"npa_cm":{"OD":null,"OS":null,"OU":null},"amplitude_D":{"OD":null,"OS":null,"OU":null},"pinhole_va":{"OD":null,"OS":null}},
+    "maddox_thorington":{"technique":null,"rx":null,"rod":null,"distance_h":null,"distance_v":null,"near_h":null,"near_v":null,"suppression":null},
+    "nra_pra":{"nra_D":null,"pra_D":null,"start":null,"tentative_add_D":null},
+    "anterior_segment":{
+      "OD":{"lids_lashes":null,"conjunctiva":null,"cornea":null,"ac_angle":null,"iris":null,"lens":null},
+      "OS":{"lids_lashes":null,"conjunctiva":null,"cornea":null,"ac_angle":null,"iris":null,"lens":null}
+    },
+    "posterior_segment":{
+      "OD":{"media":null,"disc":null,"cd_h":null,"cd_v":null,"vessels":null,"macula":null,"background":null},
+      "OS":{"media":null,"disc":null,"cd_h":null,"cd_v":null,"vessels":null,"macula":null,"background":null}
+    },
+    "gait":{"status":null,"detail":null,"confidence":0}
+  },
+  "D":{
+    "VAsc":{"distance":{"OD":null,"OS":null,"OU":null},"near":{"distance_cm":null,"OD":null,"OS":null,"OU":null}},
+    "old_glasses_type":[],
+    "old_rx":{"OD":{"sph":null,"cyl":null,"axis":null,"add":null,"prism":null,"base":null},"OS":{"sph":null,"cyl":null,"axis":null,"add":null,"prism":null,"base":null}},
+    "VAcc":{"distance":{"OD":null,"OS":null,"OU":null},"near":{"distance_cm":null,"OD":null,"OS":null,"OU":null}},
+    "final_prescription_type":[],
+    "final_rx":{"OD":{"sph":null,"cyl":null,"axis":null,"add":null,"prism":null,"base":null},"OS":{"sph":null,"cyl":null,"axis":null,"add":null,"prism":null,"base":null}},
+    "PD":{"binocular":{"distance":null,"near":null},"monocular":{"OD":{"distance":null,"near":null},"OS":{"distance":null,"near":null}}},
+    "final_va":{"distance_vacc":{"OD":null,"OS":null,"OU":null},"near":{"distance_cm":null,"OD":null,"OS":null,"OU":null},"range_ou":{"near_cm":null,"far_cm":null}},
+    "other_tests":null
+  },
+  "E":{
+    "initial_assessment":{"normal_no_obvious_abnormality":false,"refractive_error":[],"suspected_amblyopia":false,"suspected_strabismus":false,"large_interocular_va_difference":false,"other_findings":null},
+    "management":{"regular_followup":false,"followup_interval":null,"recommend_correction":false,"further_exam":null,"refer_ophthalmologist":false,"referral_urgency":null},
+    "education":[],"referral_form":"yes|no|blank|uncertain","next_appointment":null
+  },
+  "uncertain_fields":[{"field":"欄位路徑","observed":"可能內容","confidence":0,"reason":"辨識不確定原因"}]
+}`;
+
+const FEEDBACK_PROMPT = `你是視光學實驗課的 AI 教學回饋助教。你會收到：
+(1) V3.3 固定紙本表單辨識出的結構化 JSON；
+(2) V0.6 Recording Rule Engine 的 errors / warnings / review；
+(3) 程式已計算的「完整性、格式正確性、紀錄一致性」分數。
+
+你的任務不是推翻規則引擎，而是評估較高層次的「臨床推理」與「Problem List / Plan / Patient Education 連結」，並產生學生可立即採取行動的個人化回饋。
+
+【重要限制】
+- 不得做疾病診斷或取代教師、驗光師、眼科醫師的臨床判斷。
+- 不得創造表單未提供的結果。
+- confidence < 0.65 的欄位不能當成確定錯誤，只能要求人工確認。
+- V0.6 尚未由教師定稿的疾病／轉介數值門檻（如 IOP 閾值）不得自行判為一定異常。
+- Recording correctness 優先：Carlson & Kurtz 4e 為主要標準；Elliott 4e 等效且完整的記錄可接受。
+- 臨床推理著重 B→C→D→E 是否形成合理證據鏈；管理分數著重 Problem List 是否被 Plan、追蹤、進一步檢查、轉介或衛教回應。
+- 回覆使用繁體中文，僅輸出 JSON。
+
+輸出格式：
+{
+  "clinical_reasoning_score":0,
+  "management_score":0,
+  "overall_summary":"80字內",
+  "strengths":["具體做得好的地方"],
+  "priority_feedback":[{"severity":"error|warning|review","title":"問題標題","evidence":"表單中看見的內容","why":"為什麼要修正/確認","how_to_fix":"如何回到 V3.3 表單修改","learning_topic":"建議複習主題"}],
+  "learning_priorities":["下一次最優先練習主題"],
+  "teacher_review_needed":false
+}
+clinical_reasoning_score 為 0~25；management_score 為 0~15。`;
+
+// V0.6：先評 Recording correctness；臨床疾病/轉介數值閾值待教師 Gold Standard 驗證後再加入。
+const RULE_CONFIG = {
+  minConfidence:0.65,
+  refractionStep:0.25,
+  requireQuarterStep:true,
+  ruleVersion:APP_META.ruleVersion,
+  deduct:{error:2,warning:1,review:0}
+};
+
+// ═══════════════════════════════════════════════════
+//  攝影機管理
+// ═══════════════════════════════════════════════════
+let camStream = null;
+let capturedFrames = []; // {b64, mime}
+let uploadedImgs = [];
+
+async function startCam(){
+  try{
+    const q = C.quality;
+    const constraints = {
+      video:{
+        width: {ideal: q==='high'?1920:q==='medium'?1280:640},
+        height:{ideal: q==='high'?1080:q==='medium'?720:480},
+        facingMode:'environment'
+      }
+    };
+    camStream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('cam-video').srcObject = camStream;
+    document.getElementById('camOverlay').classList.add('hidden');
+    document.getElementById('liveBadge').style.display='flex';
+    document.getElementById('btnCapture').disabled = false;
+    document.getElementById('btnStopCam').disabled = false;
+    document.getElementById('btnStartCam').disabled = true;
+
+    // 列出可用攝影機
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d=>d.kind==='videoinput');
+    if(cams.length > 1){
+      const sel = document.getElementById('camSel');
+      sel.innerHTML = cams.map(d=>`<option value="${d.deviceId}">${d.label||'攝影機 '+d.deviceId.slice(0,8)}</option>`).join('');
+      document.getElementById('camDevices').style.display='block';
+    }
+    showToast('✓ 攝影機已啟動');
+  }catch(e){
+    showToast('❌ 攝影機啟動失敗：'+e.message);
+  }
+}
+
+async function switchCam(){
+  const deviceId = document.getElementById('camSel').value;
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); }
+  const q = C.quality;
+  camStream = await navigator.mediaDevices.getUserMedia({
+    video:{deviceId:{exact:deviceId},width:{ideal:q==='high'?1920:q==='medium'?1280:640},height:{ideal:q==='high'?1080:q==='medium'?720:480}}
+  });
+  document.getElementById('cam-video').srcObject = camStream;
+  showToast('✓ 已切換攝影機');
+}
+
+function stopCam(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  const v = document.getElementById('cam-video');
+  v.srcObject = null;
+  document.getElementById('camOverlay').classList.remove('hidden');
+  document.getElementById('liveBadge').style.display='none';
+  document.getElementById('btnCapture').disabled = true;
+  document.getElementById('btnStopCam').disabled = true;
+  document.getElementById('btnStartCam').disabled = false;
+  document.getElementById('camDevices').style.display='none';
+  showToast('✓ 攝影機已停止');
+}
+
+function captureFrame(){
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const b64 = canvas.toDataURL('image/jpeg',0.92).split(',')[1];
+  capturedFrames.push({b64,mime:'image/jpeg'});
+  renderCaptureThumbs();
+  showToast(`✓ 已擷取第 ${capturedFrames.length} 頁`);
+}
+
+function renderCaptureThumbs(){
+  const strip = document.getElementById('thumbStrip');
+  const card = document.getElementById('capturePreviewCard');
+  document.getElementById('captureCount').textContent = capturedFrames.length;
+  card.style.display = capturedFrames.length ? 'block' : 'none';
+  strip.innerHTML = capturedFrames.map((f,i)=>`
+    <div class="thumb">
+      <img src="data:${f.mime};base64,${f.b64}">
+      <div class="num">${i+1}</div>
+      <button class="del" onclick="removeCaptured(${i})">×</button>
+    </div>`).join('');
+}
+
+function removeCaptured(i){ capturedFrames.splice(i,1); renderCaptureThumbs(); }
+function clearCaptures(){ capturedFrames=[]; renderCaptureThumbs(); showToast('✓ 已清除所有擷取'); }
+
+// ═══════════════════════════════════════════════════
+//  上傳管理（支援圖片 + PDF）
+// ═══════════════════════════════════════════════════
+
+// 取得 pdf.js（3.x legacy，已由 script tag 載入）
+async function getPdfjsLib(){
+  // 等待 pdfjsLib 全域變數就位（最多等 5 秒）
+  for(let i=0; i<50; i++){
+    if(typeof pdfjsLib !== 'undefined' && pdfjsLib.getDocument) break;
+    await new Promise(r=>setTimeout(r,100));
+  }
+  if(typeof pdfjsLib === 'undefined') throw new Error('pdf.js 載入失敗，請確認網路連線後重新整理頁面');
+  // 設定 worker
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  return pdfjsLib;
+}
+
+// PDF → [{b64, mime}] 每頁轉成 jpeg
+async function pdfToImages(arrayBuffer, scale=2.0, onProgress=null){
+  const pdfjs = await getPdfjsLib();
+  const pdf   = await pdfjs.getDocument({data: new Uint8Array(arrayBuffer)}).promise;
+  const total = pdf.numPages;
+  const results = [];
+  for(let p=1; p<=total; p++){
+    const page    = await pdf.getPage(p);
+    const vp      = page.getViewport({scale});
+    const canvas  = document.createElement('canvas');
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
+    results.push({
+      b64:  canvas.toDataURL('image/jpeg', 0.92).split(',')[1],
+      mime: 'image/jpeg',
+      name: `pdf_p${String(p).padStart(3,'0')}.jpg`
+    });
+    if(onProgress) onProgress(p, total);
+  }
+  return results;
+}
+
+function setUpProgress(show, txt='', pct=0){
+  const ph = document.getElementById('upPh');
+  const pg = document.getElementById('upProgress');
+  const tb = document.getElementById('upThumbs');
+  if(show){
+    ph.style.display='none'; tb.style.display='none';
+    pg.style.display='block';
+    document.getElementById('upProgressTxt').textContent = txt;
+    document.getElementById('upProgressBar').style.width = pct+'%';
+  } else {
+    pg.style.display='none';
+  }
+}
+
+function updateUpCount(){
+  document.getElementById('upCount').textContent = uploadedImgs.length;
+}
+
+async function processFiles(files){
+  if(!files.length) return;
+
+  // 分類
+  const imgFiles = files.filter(f=> f.type.startsWith('image/'));
+  const pdfFiles = files.filter(f=> f.type==='application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+
+  // 處理圖片
+  for(const f of imgFiles){
+    await new Promise(res=>{
+      const r = new FileReader();
+      r.onload = ev=>{
+        uploadedImgs.push({b64:ev.target.result.split(',')[1], mime:f.type, name:f.name});
+        res();
+      };
+      r.readAsDataURL(f);
+    });
+  }
+
+  // 處理 PDF（逐個）
+  for(const f of pdfFiles){
+    setUpProgress(true, `正在轉換 PDF：${f.name}（第 0 / ? 頁）`, 0);
+    const buf = await f.arrayBuffer();
+    const pages = await pdfToImages(buf, 2.0, (cur, total)=>{
+      const pct = Math.round((cur/total)*100);
+      setUpProgress(true, `正在轉換 PDF：${f.name}（第 ${cur} / ${total} 頁）`, pct);
+    });
+    // 每頁加上 PDF 原始檔名前綴，方便排序
+    const base = f.name.replace(/\.pdf$/i,'');
+    pages.forEach((pg,i)=>{ pg.name = `${base}_p${String(i+1).padStart(3,'0')}.jpg`; });
+    uploadedImgs.push(...pages);
+  }
+
+  setUpProgress(false);
+  // 排序：按檔名
+  uploadedImgs.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  renderUploadThumbs();
+  updateUpCount();
+  document.getElementById('upInput').value='';
+  showToast(`✓ 已載入 ${uploadedImgs.length} 頁`);
+}
+
+async function handleUpload(e){
+  const files = Array.from(e.target.files);
+  await processFiles(files);
+}
+
+async function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upZone').style.borderColor='var(--border)';
+  const files = Array.from(e.dataTransfer.files);
+  await processFiles(files);
+}
+
+function renderUploadThumbs(){
+  const ph=document.getElementById('upPh'), th=document.getElementById('upThumbs');
+  if(!uploadedImgs.length){ ph.style.display='block'; th.style.display='none'; return; }
+  ph.style.display='none'; th.style.display='flex';
+  th.innerHTML = uploadedImgs.map((f,i)=>`
+    <div class="thumb">
+      <img src="data:${f.mime};base64,${f.b64}">
+      <div class="num">${i+1}</div>
+      <button class="del" onclick="removeUpload(${i})">×</button>
+    </div>`).join('');
+}
+function removeUpload(i){
+  uploadedImgs.splice(i,1);
+  renderUploadThumbs();
+  updateUpCount();
+}
+function clearUploads(){
+  uploadedImgs=[];
+  renderUploadThumbs();
+  updateUpCount();
+  document.getElementById('upPh').style.display='block';
+  showToast('✓ 已清除');
+}
+
+// ═══════════════════════════════════════════════════
+//  Gemini API：固定表單辨識 + 教學回饋
+// ═══════════════════════════════════════════════════
+function geminiUrl(){
+  const key=(C.gkey||'').trim();
+  if(!key) throw new Error('請先在設定頁輸入 Gemini API Key');
+  return `https://generativelanguage.googleapis.com/v1beta/models/${C.gmodel}:generateContent`;
+}
+
+function geminiHeaders(key=C.gkey){
+  const k=(key||'').trim();
+  if(!k) throw new Error('請先在設定頁輸入 Gemini API Key');
+  return {'Content-Type':'application/json','x-goog-api-key':k};
+}
+
+function safeJson(text){
+  if(typeof text!=='string') return text;
+  const cleaned=text.trim().replace(/^```json\s*/i,'').replace(/```$/,'').trim();
+  try{return JSON.parse(cleaned);}catch(e){
+    const a=cleaned.indexOf('{'), b=cleaned.lastIndexOf('}');
+    if(a>=0&&b>a) return JSON.parse(cleaned.slice(a,b+1));
+    throw new Error('AI 回覆不是有效 JSON');
+  }
+}
+
+async function extractRecordWithGemini(images){
+  const parts=[];
+  images.forEach(img=>parts.push({inlineData:{mimeType:img.mime,data:img.b64}}));
+  parts.push({text:'請依固定 V3.3 兩頁表單版型辨識以上影像。A區個資完全忽略，只輸出指定 JSON。'});
+  const body={
+    systemInstruction:{parts:[{text:EXTRACTION_PROMPT}]},
+    contents:[{role:'user',parts}],
+    generationConfig:{temperature:0,maxOutputTokens:12000,topP:0.8,responseMimeType:'application/json'}
+  };
+  const resp=await fetch(geminiUrl(),{method:'POST',headers:geminiHeaders(),body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text();throw new Error(`Gemini 辨識錯誤 HTTP ${resp.status}：${t.slice(0,200)}`);}
+  const d=await resp.json();
+  const text=d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+  return safeJson(text);
+}
+
+async function generateFeedbackWithGemini(extracted, validation){
+  const payload={extracted_record:extracted,rule_validation:validation};
+  const body={
+    systemInstruction:{parts:[{text:FEEDBACK_PROMPT}]},
+    contents:[{role:'user',parts:[{text:JSON.stringify(payload)}]}],
+    generationConfig:{temperature:0.15,maxOutputTokens:7000,topP:0.85,responseMimeType:'application/json'}
+  };
+  const resp=await fetch(geminiUrl(),{method:'POST',headers:geminiHeaders(),body:JSON.stringify(body)});
+  if(!resp.ok){const t=await resp.text();throw new Error(`Gemini 回饋錯誤 HTTP ${resp.status}：${t.slice(0,200)}`);}
+  const d=await resp.json();
+  const text=d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+  return safeJson(text);
+}
+
+// ═══════════════════════════════════════════════════
+//  Extraction helpers
+// ═══════════════════════════════════════════════════
+function isBlank(v){
+  if(v===null||v===undefined) return true;
+  if(typeof v==='string') return !v.trim();
+  if(Array.isArray(v)) return v.length===0;
+  return false;
+}
+function rawVal(v){return (v&&typeof v==='object'&&'value' in v)?v.value:v;}
+function confidence(v){return (v&&typeof v==='object'&&typeof v.confidence==='number')?v.confidence:1;}
+function num(v){
+  v=rawVal(v); if(isBlank(v)) return null;
+  const m=String(v).replace(/D|d|°|mmHg|mmhg|\s/g,'').match(/[+-]?\d+(?:\.\d+)?/);
+  return m?Number(m[0]):null;
+}
+function hasRxValue(rx){return rx&&['sph','cyl','axis','add','prism','vacc'].some(k=>!isBlank(rx[k]));}
+function quarterStepOK(v){const n=num(v);return n===null||Math.abs(n/RULE_CONFIG.refractionStep-Math.round(n/RULE_CONFIG.refractionStep))<1e-6;}
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+// ═══════════════════════════════════════════════════
+//  Rule Engine：客觀紀錄規則
+// ═══════════════════════════════════════════════════
+function validateRecord(r){
+  const issues=[];
+  const add=(category,severity,code,field,message,evidence='',learning_topic='')=>issues.push({category,severity,code,field,message,evidence,learning_topic});
+  const present=v=>!isBlank(rawVal(v));
+  const objHas=o=>o&&Object.values(o).some(v=>typeof v==='object'&&!Array.isArray(v)?objHas(v):present(v));
+  const countMissing=(o,keys)=>keys.filter(k=>!present(o?.[k])).length;
+
+  const doc=r.document||{};
+  if((doc.pages_detected||0)<2) add('completeness','error','DOC_MISSING_PAGE','document','應提供完整 V3.3 兩頁紀錄表',`偵測到 ${doc.pages_detected||0} 頁`,'完整紀錄流程');
+  if(doc.form_version && doc.form_version!=='V3.3') add('completeness','review','FORM_VERSION_REVIEW','document.form_version','辨識到的表單版本不是 V3.3，請人工確認',String(doc.form_version),'表單版本確認');
+  if(doc.readability==='poor') add('completeness','review','DOC_POOR_READABILITY','document','影像可讀性不足，請重新拍攝','readability=poor','紀錄表拍攝品質');
+  (doc.document_warnings||[]).forEach((w,i)=>add('completeness','review','DOC_WARNING_'+(i+1),'document.document_warnings','文件辨識有警示，請人工確認',String(w),'表單拍攝與版型'));
+  (r.uncertain_fields||[]).filter(x=>(x.confidence??0)<RULE_CONFIG.minConfidence).forEach(x=>add('completeness','review','OCR_LOW_CONFIDENCE',x.field,'此欄位 AI 辨識信心不足，請人工確認',x.observed||'', '紀錄清晰度'));
+
+  const B=r.B||{}, C=r.C||{}, D=r.D||{}, E=r.E||{};
+  ['chief_complaints','ocular_history','correction_history','systemic_history','family_ocular_history'].forEach(k=>{
+    if(B[k]===null||B[k]===undefined) add('completeness','warning',`B_${k.toUpperCase()}_MISSING`,`B.${k}`,'此問診欄位未辨識到有效紀錄','','病史詢問與紀錄');
+  });
+
+  // C 區核心 Entrance Tests / Ocular Health：先評「有沒有正確留下可判讀紀錄」
+  const ct=C.cover_test||{};
+  if(!present(ct.distance?.value)) add('completeness','warning','CT_DISTANCE_MISSING','C.cover_test.distance','Cover Test Distance 未見紀錄','','Cover Test recording');
+  if(!present(ct.near?.value)) add('completeness','warning','CT_NEAR_MISSING','C.cover_test.near','Cover Test Near 未見紀錄','','Cover Test recording');
+  if((present(ct.distance?.value)||present(ct.near?.value))&&!present(ct.rx)) add('format','warning','CT_RX_MISSING','C.cover_test.rx','Cover Test 已有結果，但未記 sc / cc','','Cover Test recording');
+
+  const eom=C.eom_motility||{};
+  if(!present(eom.status)&&!present(eom.detail)) add('completeness','warning','EOM_MISSING','C.eom_motility','EOM / Motility 未見有效紀錄','','EOM recording');
+  if(/異常|abnormal|incomit/i.test(String(eom.status||''))&&!present(eom.detail)) add('completeness','warning','EOM_ABNORMAL_NO_DETAIL','C.eom_motility.detail','EOM 記錄異常但未補充眼別／方向／症狀或 over-underaction','','EOM 異常描述');
+
+  const st=C.stereopsis||{};
+  if(!present(st.result_type)&&!present(st.seconds_arc)&&!present(st.threshold_arcsec)) add('completeness','warning','STEREOPSIS_MISSING','C.stereopsis','Stereopsis 未見結果','','立體視 recording');
+  if((present(st.seconds_arc)||present(st.threshold_arcsec))&&!present(st.test)) add('format','warning','STEREOPSIS_TEST_MISSING','C.stereopsis.test','立體視已有數值，但未記錄使用的 Test','','立體視 recording');
+
+  const cv=C.color_vision||{};
+  if(!present(cv.test)) add('completeness','warning','COLOR_TEST_MISSING','C.color_vision.test','Color Vision 未記錄測試工具','','色覺 recording');
+  if(!present(cv.od_score)||!present(cv.os_score)) add('completeness','warning','COLOR_EYE_SCORE_MISSING','C.color_vision','Color Vision 應保留 OD / OS 結果','','色覺 recording');
+
+  const iop=C.iop_nct||{};
+  ['OD','OS'].forEach(eye=>{
+    const arr=Array.isArray(iop?.[eye]?.readings)?iop[eye].readings:[];
+    if(arr.length===0) add('completeness','warning','IOP_'+eye+'_MISSING',`C.iop_nct.${eye}.readings`,`${eye} NCT / IOP 未見原始值`,'','NCT/IOP recording');
+    else if(arr.length!==3) add('format','warning','IOP_'+eye+'_READING_COUNT',`C.iop_nct.${eye}.readings`,`${eye} NCT / IOP 應保留三次原始值，不記平均`,`辨識到 ${arr.length} 筆`,'NCT/IOP recording');
+    arr.forEach((v,idx)=>{if(num(v)===null) add('format','error','IOP_NOT_NUMERIC',`C.iop_nct.${eye}.readings[${idx}]`,'IOP 原始值無法辨識為數值',String(v),'數值紀錄');});
+  });
+  if((Array.isArray(iop.OD?.readings)&&iop.OD.readings.length)||(Array.isArray(iop.OS?.readings)&&iop.OS.readings.length)){
+    if(!present(iop.time)) add('completeness','warning','IOP_TIME_MISSING','C.iop_nct.time','已記錄 NCT / IOP，但未記錄量測時間','','NCT/IOP recording');
+  }
+
+  const npc=C.npc||{};
+  if(!present(npc.break_cm)||!present(npc.recovery_cm)) add('completeness','warning','NPC_INCOMPLETE','C.npc','NPC 應包含 Break 與 Recovery','','NPC recording');
+  if((present(npc.break_cm)||present(npc.recovery_cm))&&!present(npc.target)) add('format','warning','NPC_TARGET_MISSING','C.npc.target','NPC 已記錄數值，但未記 Target','','NPC recording');
+
+  if(!present(C.pupils?.value)) add('completeness','warning','PUPILS_MISSING','C.pupils','Pupils 未見有效紀錄','','Pupil recording');
+  if(!present(C.screening_vf?.OD)||!present(C.screening_vf?.OS)) add('completeness','warning','VF_INCOMPLETE','C.screening_vf','Screening VF 應分別記錄 OD / OS','','Visual field screening');
+
+  // Worth 4 Dot / Hirschberg / Accommodation / Maddox / NRA-PRA：未施作不強制扣分；有紀錄則檢查格式完整度
+  const w4=C.worth4dot||{};
+  if(objHas(w4)){
+    if(!present(w4.distance)||!present(w4.near)) add('format','warning','W4D_DN_INCOMPLETE','C.worth4dot','Worth 4 Dot 已施作時應保留 DV / NV','','Worth 4 Dot recording');
+    if(!present(w4.lighting)) add('format','warning','W4D_LIGHTING_MISSING','C.worth4dot.lighting','Worth 4 Dot 未記 Light / Dark','','Worth 4 Dot recording');
+  }
+  const at=C.alignment_test||{};
+  if(objHas(at)&&(!present(at.technique)||!present(at.result))) add('format','warning','ALIGNMENT_TEST_INCOMPLETE','C.alignment_test','Hirschberg / Krimsky / Brückner 已施作時應同時記 Technique 與 Result','','Alignment screening recording');
+  const acc=C.accommodation||{};
+  if(objHas(acc)){
+    const npa=acc.npa_cm||{}, amp=acc.amplitude_D||{};
+    if(present(acc.method)&&!['PU','PA'].some(x=>String(acc.method).toUpperCase().includes(x))) add('format','review','NPA_METHOD_REVIEW','C.accommodation.method','NPA method 建議確認是否以 PU / PA 或等效完整格式記錄',String(acc.method),'NPA recording');
+    ['OD','OS','OU'].forEach(eye=>{if(present(npa[eye])&&num(npa[eye])===null) add('format','error','NPA_NOT_NUMERIC',`C.accommodation.npa_cm.${eye}`,'NPA 應記錄可辨識的 cm 數值',String(npa[eye]),'NPA recording');});
+    ['OD','OS','OU'].forEach(eye=>{if(present(amp[eye])&&num(amp[eye])===null) add('format','error','AMP_NOT_NUMERIC',`C.accommodation.amplitude_D.${eye}`,'Amplitude 應記錄可辨識的 D 數值',String(amp[eye]),'Accommodation recording');});
+  }
+  const mr=C.maddox_thorington||{};
+  if(objHas(mr)&&!present(mr.technique)) add('format','warning','MR_MT_TECHNIQUE_MISSING','C.maddox_thorington.technique','Maddox Rod / Modified Thorington 已施作但未記 Technique','','Binocular vision recording');
+  const np=C.nra_pra||{};
+  if(objHas(np)){
+    if(present(np.nra_D)&&num(np.nra_D)===null) add('format','error','NRA_NOT_NUMERIC','C.nra_pra.nra_D','NRA 無法辨識為屈光度數值',String(np.nra_D),'NRA/PRA recording');
+    if(present(np.pra_D)&&num(np.pra_D)===null) add('format','error','PRA_NOT_NUMERIC','C.nra_pra.pra_D','PRA 無法辨識為屈光度數值',String(np.pra_D),'NRA/PRA recording');
+  }
+
+  // Slit Lamp：OD / OS 分開，避免把所有資訊塞成一個「normal」
+  const antKeys=['lids_lashes','conjunctiva','cornea','ac_angle','iris','lens'];
+  ['OD','OS'].forEach(eye=>{
+    const o=C.anterior_segment?.[eye]||{};
+    const miss=countMissing(o,antKeys);
+    if(miss===antKeys.length) add('completeness','warning','ANTSEG_'+eye+'_MISSING',`C.anterior_segment.${eye}`,`Anterior Segment ${eye} 未見分項紀錄`,'','Slit Lamp recording');
+    else if(miss>=3) add('completeness','warning','ANTSEG_'+eye+'_PARTIAL',`C.anterior_segment.${eye}`,`Anterior Segment ${eye} 分項紀錄不完整`,`缺 ${miss}/${antKeys.length} 項`,'Slit Lamp recording');
+  });
+  const postKeys=['media','disc','cd_h','cd_v','vessels','macula','background'];
+  ['OD','OS'].forEach(eye=>{
+    const o=C.posterior_segment?.[eye]||{};
+    const miss=countMissing(o,postKeys);
+    if(miss===postKeys.length) add('completeness','warning','POSTSEG_'+eye+'_MISSING',`C.posterior_segment.${eye}`,`Posterior Segment ${eye} 未見分項紀錄`,'','Posterior Segment recording');
+    else if(miss>=4) add('completeness','warning','POSTSEG_'+eye+'_PARTIAL',`C.posterior_segment.${eye}`,`Posterior Segment ${eye} 分項紀錄不完整`,`缺 ${miss}/${postKeys.length} 項`,'Posterior Segment recording');
+  });
+  if(!present(C.gait?.status)) add('completeness','warning','GAIT_MISSING','C.gait','步態未見明確紀錄','','初步理學檢查');
+
+  // D 區：Distance / Near VA 與 Rx recording
+  ['OD','OS'].forEach(eye=>{
+    if(!present(D.VAsc?.distance?.[eye])) add('completeness','warning','VASC_DISTANCE_MISSING',`D.VAsc.distance.${eye}`,`${eye} Distance VAsc / Vsc 未見紀錄`,'','視力紀錄');
+    if(hasRxValue(D.old_rx?.[eye])&&!present(D.VAcc?.distance?.[eye])) add('completeness','warning','VACC_DISTANCE_MISSING',`D.VAcc.distance.${eye}`,`${eye} 已記錄 Entering Rx，但 Distance VAcc / Vcc 未見紀錄`,'','矯正視力紀錄');
+
+    [['old_rx','Entering Rx'],['final_rx','Final Rx']].forEach(([group,label])=>{
+      const rx=D[group]?.[eye]||{};
+      const cyl=num(rx.cyl), axis=num(rx.axis);
+      if(cyl!==null&&Math.abs(cyl)>1e-9&&!present(rx.axis)) add('format','error','CYL_AXIS_REQUIRED',`D.${group}.${eye}.axis`,`${label} ${eye} 有 Cyl，但 Axis 未填`,`Cyl=${rx.cyl}`,'散光處方紀錄');
+      if(present(rx.axis)){
+        if(axis===null) add('format','error','AXIS_NOT_NUMERIC',`D.${group}.${eye}.axis`,`${label} ${eye} Axis 無法辨識為數字`,String(rx.axis),'散光軸度紀錄');
+        else if(axis<1||axis>180) add('format','error','AXIS_RANGE',`D.${group}.${eye}.axis`,`${label} ${eye} Axis 應以 1–180° 紀錄`,`Axis=${axis}`,'散光軸度紀錄');
+      }
+      if(RULE_CONFIG.requireQuarterStep) ['sph','cyl','add'].forEach(k=>{if(present(rx[k])&&!quarterStepOK(rx[k])) add('format','warning','REFRACTION_STEP',`D.${group}.${eye}.${k}`,`${label} ${eye} ${k.toUpperCase()} 未符合 ${RULE_CONFIG.refractionStep.toFixed(2)} D 階距`,`值=${rx[k]}`,'屈光度紀錄格式');});
+      if(present(rx.prism)&&!present(rx.base)) add('format','warning','PRISM_BASE_REQUIRED',`D.${group}.${eye}.base`,`${label} ${eye} 有 Prism，但 Base 未填`,`Prism=${rx.prism}`,'稜鏡處方紀錄');
+    });
+
+    if(hasRxValue(D.final_rx?.[eye])&&!present(D.final_va?.distance_vacc?.[eye])) add('completeness','warning','FINAL_VACC_MISSING',`D.final_va.distance_vacc.${eye}`,`${eye} 已有 Final Rx，但 Distance Vacc 未見紀錄`,'','最終矯正視力紀錄');
+  });
+  if((hasRxValue(D.old_rx?.OD)||hasRxValue(D.old_rx?.OS))&&!(D.old_glasses_type||[]).length) add('completeness','warning','OLD_GLASS_TYPE_MISSING','D.old_glasses_type','已記錄 Entering Rx，但未勾選舊鏡用途','','處方用途紀錄');
+  if((hasRxValue(D.final_rx?.OD)||hasRxValue(D.final_rx?.OS))&&!(D.final_prescription_type||[]).length) add('completeness','warning','FINAL_RX_TYPE_MISSING','D.final_prescription_type','已記錄 Final Rx，但未勾選處方用途','','處方用途紀錄');
+  if((hasRxValue(D.final_rx?.OD)||hasRxValue(D.final_rx?.OS))&&!present(D.PD?.binocular?.distance)) add('completeness','warning','PD_DISTANCE_MISSING','D.PD.binocular.distance','已有 Final Rx，但 Binocular Distance PD 未見紀錄','','PD recording');
+
+  // E 區：只做紀錄一致性，不建立疾病診斷門檻
+  const ia=E.initial_assessment||{}, mg=E.management||{};
+  const abnormalAssessment=(ia.refractive_error||[]).length||ia.suspected_amblyopia||ia.suspected_strabismus||ia.large_interocular_va_difference||present(ia.other_findings);
+  if(ia.normal_no_obvious_abnormality&&abnormalAssessment) add('consistency','error','ASSESSMENT_CONTRADICTION','E.initial_assessment','同時勾選「正常/無明顯異常」與屈光不正或其他異常評估','','Problem List 一致性');
+  if(mg.regular_followup&&!present(mg.followup_interval)) add('completeness','warning','FOLLOWUP_INTERVAL_MISSING','E.management.followup_interval','勾選定期追蹤，但未填追蹤間隔','','追蹤計畫紀錄');
+  if(mg.refer_ophthalmologist&&E.referral_form==='no') add('consistency','warning','REFERRAL_CONTRADICTION','E.referral_form','已建議轉介眼科，但開立轉介單記錄為否','','轉介紀錄一致性');
+  if(!mg.refer_ophthalmologist&&E.referral_form==='yes') add('consistency','warning','REFERRAL_WITHOUT_RECOMMENDATION','E.management','已開立轉介單，但 Plan 未勾選轉介眼科','','轉介紀錄一致性');
+  if(mg.refer_ophthalmologist&&!present(mg.referral_urgency)) add('completeness','warning','REFERRAL_URGENCY_MISSING','E.management.referral_urgency','已建議轉介，但未記錄一般／儘速／緊急','','轉介紀錄');
+  if(!(E.education||[]).length) add('completeness','warning','EDUCATION_MISSING','E.education','未見 Patient Education / 視力保健衛教紀錄','','衛教紀錄');
+
+  const scoreCat=(cat,max)=>{
+    const deduction=issues.filter(x=>x.category===cat).reduce((sum,x)=>sum+(RULE_CONFIG.deduct[x.severity]??0),0);
+    return Math.max(0,max-deduction);
+  };
+  const scores={completeness:scoreCat('completeness',20),format:scoreCat('format',20),consistency:scoreCat('consistency',20)};
+  return {issues,scores,needsReview:issues.some(x=>x.severity==='review'||x.severity==='error'),ruleVersion:RULE_CONFIG.ruleVersion};
+}
+
+// ═══════════════════════════════════════════════════
+//  送出分析
+// ═══════════════════════════════════════════════════
+async function submitScan(){
+  const name=document.getElementById('s-name').value.trim();
+  const seq=document.getElementById('s-seq').value.trim();
+  const className=document.getElementById('s-class').value.trim()||C.classDefault;
+  if(!name||!seq){showToast('❗ 請填寫學生姓名與學號');return;}
+  if(capturedFrames.length<2){showToast('❗ 請拍攝完整 V3.3 兩頁紀錄表');return;}
+  await doEvaluate(capturedFrames,name,seq,className,document.getElementById('s-note').value.trim(),'scanResult','camera');
+}
+async function submitUpload(){
+  const name=document.getElementById('u-name').value.trim();
+  const seq=document.getElementById('u-seq').value.trim();
+  const className=document.getElementById('u-class').value.trim()||C.classDefault;
+  if(!name||!seq){showToast('❗ 請填寫學生姓名與學號');return;}
+  if(uploadedImgs.length<2){showToast('❗ 請上傳完整 V3.3 兩頁紀錄表');return;}
+  await doEvaluate(uploadedImgs,name,seq,className,document.getElementById('u-note').value.trim(),'uploadResult','upload');
+}
+
+async function doEvaluate(images,name,seq,className,note,resultElemId,source){
+  const el=document.getElementById(resultElemId);
+  el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:14px;"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:13px;color:var(--muted);text-align:center;">步驟 1/4：AI 正在辨識 V3.3 與手寫紀錄...<br><span style="font-size:11px;">接著會進行規則檢核、個人化回饋與班級資料同步</span></div></div>`;
+  try{
+    const extracted=await extractRecordWithGemini(images);
+    el.querySelector('div div:last-child').innerHTML='步驟 2/4：V0.6 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
+    const validation=validateRecord(extracted);
+    el.querySelector('div div:last-child').innerHTML='步驟 3/4：AI 教學助教正在產生個人化修正建議...';
+    const feedback=await generateFeedbackWithGemini(extracted,validation);
+    const scores={
+      completeness:validation.scores.completeness,
+      format:validation.scores.format,
+      consistency:validation.scores.consistency,
+      clinical:Math.max(0,Math.min(25,Number(feedback.clinical_reasoning_score)||0)),
+      management:Math.max(0,Math.min(15,Number(feedback.management_score)||0))
+    };
+    scores.total=scores.completeness+scores.format+scores.consistency+scores.clinical+scores.management;
+    const level=scores.total>=90?'精熟':scores.total>=80?'良好':scores.total>=70?'基礎穩定':scores.total>=60?'待加強':'需優先補強';
+    const recId=Date.now();
+    const attempt=records.filter(x=>String(x.seq)===String(seq)).length+1;
+    const rec={
+      id:recId,submissionId:`VOC-${recId}-${Math.random().toString(36).slice(2,8).toUpperCase()}`,
+      name,seq,className:className||'',course:C.course,attempt,source,note,reviewer:C.reviewer,
+      submittedAt:new Date().toISOString(),date:new Date().toLocaleDateString('zh-TW'),time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),
+      systemVersion:APP_META.systemVersion,formVersion:APP_META.formVersion,schemaVersion:APP_META.schemaVersion,ruleVersion:APP_META.ruleVersion,promptVersion:APP_META.promptVersion,model:C.gmodel,
+      scores,level,hasReview:validation.needsReview||!!feedback.teacher_review_needed,extracted,validation,feedback,imgCount:images.length,cloudSync:{status:'pending'}
+    };
+    records.unshift(rec);saveRecords();
+    try{await saveImgs(recId,images);}catch(e){console.warn('影像儲存失敗',e);}
+    el.querySelector('div div:last-child').innerHTML='步驟 4/4：正在保存學習紀錄並同步 Google Sheet...';
+    rec.cloudSync=await syncRecordToSheet(rec);
+    saveRecords();
+    renderScoreResult(el,rec);
+    showToast(`✓ 分析完成：${name}（${scores.total} 分）${rec.cloudSync.status==='sent'?'・已送出班級資料':''}`);
+  }catch(e){
+    el.innerHTML=`<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;font-size:13px;">❌ 分析失敗：${esc(e.message)}<br><div style="font-size:11px;margin-top:6px;color:#c62828;">請確認 API Key、網路、V3.3 影像品質與設定</div></div>`;
+    showToast('❌ 分析失敗');
+  }
+}
+
+function badgeForSeverity(s){return s==='error'?'🔴':s==='warning'?'🟠':'🟡';}
+function renderScoreResult(el,rec){
+  const s=rec.scores, issues=rec.validation?.issues||[], fb=rec.feedback||{};
+  const topIssues=[...issues.filter(x=>x.severity!=='review'),...(fb.priority_feedback||[])].slice(0,5);
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${esc(rec.name)}・${esc(rec.seq)}・${rec.date} ${rec.time}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><div class="score-badge">${s.total}<span class="score-label"> / 100</span></div><span class="badge ${levelClass(rec.level)}">${rec.level}</span>${rec.hasReview?'<span class="badge badge-warn">⚠️ 有項目需確認</span>':''}${rec.cloudSync?.status==='sent'?'<span class="badge badge-a">☁️ 班級資料已送出</span>':rec.cloudSync?.status==='failed'?'<span class="badge badge-warn">☁️ 同步待確認</span>':''}</div></div>
+      <button class="btn o" onclick="showDetail('${rec.id}')" style="font-size:12px;">🔍 詳細學習報告</button>
+    </div>
+    <div class="score-preview">
+      ${bar('紀錄完整性',s.completeness,20)}${bar('格式正確性',s.format,20)}${bar('紀錄一致性',s.consistency,20)}${bar('臨床推理',s.clinical,25,'var(--accent)')}${bar('評估/處置/衛教',s.management,15,'var(--accent)')}
+      <div style="border-top:1px solid var(--border);margin:4px 0;"></div>${bar('學習表現總分',s.total,100,'var(--primary)')}
+    </div>
+    <div style="margin-top:14px;padding:11px 12px;background:var(--primary-light);border-radius:9px;font-size:12px;line-height:1.7;"><strong>AI 摘要：</strong>${esc(fb.overall_summary||'已完成規則檢核，請查看詳細報告。')}</div>
+    ${topIssues.length?`<div style="margin-top:12px;"><div class="card-title" style="margin-bottom:6px;">🎯 優先修正</div>${topIssues.map(x=>`<div style="padding:8px 10px;border-left:3px solid ${x.severity==='error'?'var(--danger)':'var(--accent)'};background:#faf9f6;margin-bottom:6px;border-radius:6px;font-size:12px;"><strong>${badgeForSeverity(x.severity)} ${esc(x.title||x.message||x.code)}</strong><div style="color:var(--muted);margin-top:3px;">${esc(x.how_to_fix||x.evidence||x.field||'請查看詳細報告')}</div></div>`).join('')}</div>`:''}`;
+}
+
+function bar(label,val,max,color='var(--primary)'){
+  const pct=Math.min(100,Math.round((val/max)*100));
+  return `<div class="sp-row"><div class="sp-label" style="font-size:11px;">${label}</div><div class="sp-bar"><div class="sp-fill" style="width:${pct}%;background:${color};"></div></div><div class="sp-val" style="font-size:12px;">${val}<span style="font-size:10px;color:var(--muted);">/${max}</span></div></div>`;
+}
+function levelClass(l){if(l==='精熟')return 'badge-a';if(l==='良好'||l==='基礎穩定')return 'badge-b';if(l==='需優先補強')return 'badge-warn';return 'badge-b';}
+
+// ═══════════════════════════════════════════════════
+//  詳細 Modal
+// ═══════════════════════════════════════════════════
+async function showDetail(id){
+  const rec=records.find(r=>String(r.id)===String(id));if(!rec)return;
+  document.getElementById('modalName').textContent=`${rec.name}（${rec.seq}）`;
+  document.getElementById('modalMeta').textContent=`分析日期：${rec.date} ${rec.time}・${rec.className||'未填班級'}・${rec.course||''}・${rec.reviewer}・${rec.formVersion||'V3.3'}・規則 ${rec.validation?.ruleVersion||'—'}・雲端 ${rec.cloudSync?.status||'—'}`;
+  document.getElementById('modalDlBtn').onclick=()=>downloadPkg(rec.id);
+  let imgs=[];try{imgs=await loadImgs(rec.id);}catch(e){}
+  const imgHtml=imgs.length?`<div style="margin-bottom:14px;"><div class="card-title">📷 原始紀錄影像（共 ${imgs.length} 頁）</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${imgs.map((img,i)=>`<div style="position:relative;"><img src="data:${img.mime};base64,${img.b64}" style="width:140px;height:180px;object-fit:cover;border-radius:8px;border:2px solid var(--border);cursor:pointer;" onclick="previewImg('${img.mime}','${img.b64}')"><div style="position:absolute;bottom:4px;left:4px;background:rgba(26,74,107,.85);color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;">第${i+1}頁</div></div>`).join('')}</div></div>`:'';
+  const s=rec.scores, fb=rec.feedback||{}, issues=rec.validation?.issues||[];
+  const ruleHtml=issues.length?issues.map(x=>`<div style="padding:9px 10px;margin-bottom:6px;background:${x.severity==='error'?'#fff0f0':x.severity==='warning'?'var(--warn-bg)':'#f5f5f5'};border-radius:8px;font-size:12px;line-height:1.6;"><strong>${badgeForSeverity(x.severity)} ${esc(x.message)}</strong><br><span style="color:var(--muted);">${esc(x.field)}${x.evidence?'｜'+esc(x.evidence):''}</span></div>`).join(''):'<div style="font-size:12px;color:var(--success);">✓ 規則引擎未發現明確錯誤</div>';
+  const fbHtml=(fb.priority_feedback||[]).map(x=>`<div style="padding:10px 12px;border:1px solid var(--border);border-radius:9px;margin-bottom:8px;font-size:12px;line-height:1.7;"><strong>${badgeForSeverity(x.severity)} ${esc(x.title)}</strong><div><b>依據：</b>${esc(x.evidence)}</div><div><b>為什麼：</b>${esc(x.why)}</div><div><b>怎麼改：</b>${esc(x.how_to_fix)}</div><div><b>複習：</b>${esc(x.learning_topic)}</div></div>`).join('');
+  document.getElementById('modalContent').innerHTML=imgHtml+`
+    <div class="card card-blue"><div class="card-title">📊 五面向學習表現</div>${bar('紀錄完整性',s.completeness,20)}${bar('格式正確性',s.format,20)}${bar('紀錄一致性',s.consistency,20)}${bar('臨床推理',s.clinical,25)}${bar('評估/處置/衛教',s.management,15)}<hr class="divider">${bar('總分',s.total,100)}</div>
+    <div class="card"><div class="card-title">💬 AI 總結</div><div style="font-size:13px;line-height:1.8;">${esc(fb.overall_summary||'')}</div>${(fb.strengths||[]).length?`<div style="margin-top:8px;font-size:12px;"><b>做得好的地方：</b><br>${fb.strengths.map(x=>'✓ '+esc(x)).join('<br>')}</div>`:''}</div>
+    <div class="card"><div class="card-title">⚙️ 規則引擎檢核</div>${ruleHtml}</div>
+    <div class="card"><div class="card-title">🧠 個人化教學回饋</div>${fbHtml||'<div style="color:var(--muted);font-size:12px;">無額外 AI 回饋。</div>'}</div>
+    <div class="card"><div class="card-title">🎯 下一次優先練習</div><div style="font-size:12px;line-height:1.8;">${(fb.learning_priorities||[]).map((x,i)=>`${i+1}. ${esc(x)}`).join('<br>')||'—'}</div></div>`;
+  document.getElementById('detailModal').classList.add('open');
+}
+function closeModal(){ document.getElementById('detailModal').classList.remove('open'); }
+
+function markdownToHtml(md){
+  if(!md) return '';
+  // 表格轉換
+  let html = md.replace(/\|(.+)\|/g, match=>{
+    const cells = match.split('|').filter(c=>c.trim());
+    return '<tr>' + cells.map(c=>`<td>${c.trim()}</td>`).join('') + '</tr>';
+  });
+  html = html.replace(/(<tr>.*?<\/tr>\n)+/gs, m=>`<table>${m}</table>`);
+  // 標題
+  html = html.replace(/^#{1,3}\s+(.+)$/gm,'<strong>$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  // 換行
+  html = html.replace(/\n/g,'<br>');
+  return html;
+}
+
+// ═══════════════════════════════════════════════════
+//  學習紀錄頁
+// ═══════════════════════════════════════════════════
+function renderRecords(){
+  const q=document.getElementById('recSearch').value.trim().toLowerCase();const sort=document.getElementById('recSort').value;
+  let list=records.filter(r=>!q||r.name.toLowerCase().includes(q)||r.seq.toLowerCase().includes(q)||(r.note||'').toLowerCase().includes(q));
+  list.sort((a,b)=>sort==='date-desc'?b.id-a.id:sort==='date-asc'?a.id-b.id:sort==='score-desc'?(b.scores?.total||0)-(a.scores?.total||0):sort==='score-asc'?(a.scores?.total||0)-(b.scores?.total||0):sort==='name'?a.name.localeCompare(b.name,'zh-TW'):0);
+  const tbody=document.getElementById('recBody'),empty=document.getElementById('recEmpty');document.getElementById('recCount').textContent=records.length;
+  if(!list.length){tbody.innerHTML='';empty.style.display='block';return;}empty.style.display='none';
+  tbody.innerHTML=list.map((r,i)=>`<tr><td style="font-weight:700;color:var(--primary);">${i+1}</td><td style="font-weight:600;">${esc(r.name)}<div style="font-size:10px;color:var(--muted);font-weight:400;">${esc(r.className||'')}</div></td><td><code style="font-size:12px;">${esc(r.seq)}</code></td><td style="color:var(--muted);font-size:12px;">${r.date} ${r.time}</td><td>${r.scores.completeness}/20</td><td>${r.scores.format}/20</td><td>${r.scores.consistency}/20</td><td>${r.scores.clinical}/25</td><td style="font-size:16px;font-weight:700;color:var(--primary);">${r.scores.total}/100</td><td><div style="display:flex;gap:5px;"><button class="btn" style="padding:4px 10px;font-size:11px;" onclick="showDetail('${r.id}')">🔍 詳情</button><button class="btn g" style="padding:4px 10px;font-size:11px;" onclick="downloadPkg('${r.id}')">📦 下載</button><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteRecord('${r.id}')">🗑</button></div></td></tr>`).join('');
+}
+function deleteRecord(id){
+  if(!confirm('確定刪除此筆學習紀錄？（包含所有儲存的影像）')) return;
+  records=records.filter(r=>String(r.id)!==String(id));
+  saveRecords();
+  deleteImgs(id).catch(()=>{});
+  renderRecords(); showToast('✓ 已刪除');
+}
+
+function clearAllRecords(){
+  if(!confirm('確定清除所有學習紀錄？（包含所有儲存的影像，此操作無法復原）')) return;
+  const ids = records.map(r=>r.id);
+  ids.forEach(id=>deleteImgs(id).catch(()=>{}));
+  records=[];
+  saveRecords(); renderRecords(); showToast('✓ 已清除所有記錄');
+}
+
+// ═══════════════════════════════════════════════════
+//  影像下載 & 預覽
+// ═══════════════════════════════════════════════════
+function downloadOneImg(mime, b64, filename){
+  const ext = mime.includes('png')?'png':'jpg';
+  const a = document.createElement('a');
+  a.href = `data:${mime};base64,${b64}`;
+  a.download = `${filename}.${ext}`;
+  a.click();
+}
+
+async function downloadAllImgs(recId, prefix){
+  let imgs=[];
+  try{ imgs = await loadImgs(recId); }catch(e){}
+  if(!imgs.length){ showToast('❗ 無影像可下載'); return; }
+  // 逐張下載
+  imgs.forEach((img,i)=>{
+    setTimeout(()=>{
+      const ext = img.mime.includes('png')?'png':'jpg';
+      const a = document.createElement('a');
+      a.href = `data:${img.mime};base64,${img.b64}`;
+      a.download = `${prefix}_p${i+1}.${ext}`;
+      a.click();
+    }, i*300);
+  });
+  showToast(`✓ 開始下載 ${imgs.length} 張影像`);
+}
+
+// 影像放大預覽
+function previewImg(mime, b64){
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;cursor:zoom-out;';
+  overlay.innerHTML=`<img src="data:${mime};base64,${b64}" style="max-width:92vw;max-height:92vh;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.6);">`;
+  overlay.onclick=()=>document.body.removeChild(overlay);
+  document.body.appendChild(overlay);
+}
+
+// ═══════════════════════════════════════════════════
+//  📦 一鍵下載整包（評分報告 TXT + 所有影像）
+// ═══════════════════════════════════════════════════
+async function downloadPkg(id){
+  const rec = records.find(r=>String(r.id)===String(id));
+  if(!rec){ showToast('❗ 找不到記錄'); return; }
+
+  showToast('⏳ 準備打包中...');
+
+  // 1. 產生評分報告文字檔
+  const reportTxt = buildReportTxt(rec);
+
+  // 2. 載入影像
+  let imgs = [];
+  try{ imgs = await loadImgs(rec.id); }catch(e){}
+
+  // 3. 打包 ZIP
+  const zip = new JSZip();
+  const safePrefix = `${rec.seq}_${rec.name}`.replace(/[\/\\:*?"<>|]/g,'_');
+  const folder = zip.folder(safePrefix);
+
+  // 評分報告
+  folder.file(`${safePrefix}_學習回饋報告.txt`, reportTxt);
+
+  // 影像
+  if(imgs.length){
+    const imgFolder = folder.folder('掃描影像');
+    imgs.forEach((img,i)=>{
+      const ext = img.mime.includes('png')?'png':'jpg';
+      // base64 → binary
+      const bin = atob(img.b64);
+      const arr = new Uint8Array(bin.length);
+      for(let j=0;j<bin.length;j++) arr[j]=bin.charCodeAt(j);
+      imgFolder.file(`${safePrefix}_p${String(i+1).padStart(2,'0')}.${ext}`, arr, {binary:true});
+    });
+  }
+
+  // 4. 下載
+  const blob = await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${safePrefix}_驗光學習紀錄_${rec.date.replace(/\//g,'-')}.zip`;
+  a.click();
+  showToast(`✓ 已下載：${rec.name} 學習紀錄整包（${imgs.length} 張影像）`);
+}
+
+// ─── 產生純文字評分報告 ───
+function buildReportTxt(rec){
+  const s=rec.scores,fb=rec.feedback||{},issues=rec.validation?.issues||[];const line='═'.repeat(60),thin='─'.repeat(60);
+  return [line,'  馬偕醫護管理專科學校 視光學科','  AI 驗光紀錄輔助學習報告',line,'','【學生資料】',thin,`  姓名：${rec.name}`,`  學號：${rec.seq}`,`  教師/課程：${rec.reviewer}`,`  分析日期：${rec.date} ${rec.time}`,`  影像頁數：${rec.imgCount}`,rec.note?`  練習備註：${rec.note}`:'','','【五面向學習表現】',thin,`  紀錄完整性          ${s.completeness} / 20`,`  格式正確性          ${s.format} / 20`,`  紀錄一致性          ${s.consistency} / 20`,`  臨床推理            ${s.clinical} / 25`,`  評估/處置/衛教      ${s.management} / 15`,line,`  ★ 總分：${s.total} / 100　${rec.level}`,line,'','【規則引擎檢核】',thin,...(issues.length?issues.map(x=>`  ${x.severity.toUpperCase()}｜${x.code}｜${x.field}｜${x.message}${x.evidence?'｜'+x.evidence:''}`):['  ✓ 未發現明確規則錯誤']),'','【AI 個人化回饋】',thin,fb.overall_summary||'',...(fb.strengths||[]).map(x=>'  ✓ '+x),...(fb.priority_feedback||[]).flatMap(x=>['',`  ${x.severity.toUpperCase()}｜${x.title}`,`    依據：${x.evidence}`,`    原因：${x.why}`,`    修正：${x.how_to_fix}`,`    複習：${x.learning_topic}`]),'','【下一次優先練習】',thin,...(fb.learning_priorities||[]).map((x,i)=>`  ${i+1}. ${x}`),'',line,'  ※ 本報告用於教學回饋，不取代臨床診斷、醫療決策或教師最終評量。',`  ※ 規則版本：${rec.validation?.ruleVersion||'—'}｜產出時間：${new Date().toLocaleString('zh-TW')}`,line].join('\n');
+}
+
+// ═══════════════════════════════════════════════════
+//  統計分析頁
+// ═══════════════════════════════════════════════════
+function renderStats(){
+  if(!records.length){document.getElementById('statGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted);">尚無學習紀錄</div>';return;}
+  const totals=records.map(r=>r.scores.total),avg=totals.reduce((a,b)=>a+b,0)/totals.length,need=records.filter(r=>r.hasReview).length;
+  const allIssues=records.flatMap(r=>r.validation?.issues||[]),counts={};allIssues.forEach(x=>counts[x.code]=(counts[x.code]||0)+1);const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  document.getElementById('statGrid').innerHTML=`<div class="stat-card"><div class="stat-n">${records.length}</div><div class="stat-l">總練習次數</div></div><div class="stat-card"><div class="stat-n">${avg.toFixed(1)}</div><div class="stat-l">平均總分 / 100</div></div><div class="stat-card"><div class="stat-n">${Math.max(...totals)}</div><div class="stat-l">最高分</div></div><div class="stat-card"><div class="stat-n" style="color:var(--warn);">${need}</div><div class="stat-l">需人工確認</div></div>`;
+  const buckets=[0,0,0,0,0];records.forEach(r=>{const t=r.scores.total;if(t<60)buckets[0]++;else if(t<70)buckets[1]++;else if(t<80)buckets[2]++;else if(t<90)buckets[3]++;else buckets[4]++;});const maxB=Math.max(...buckets,1),labels=['<60','60-69','70-79','80-89','≥90'];
+  document.getElementById('distChart').innerHTML=`<div style="display:flex;align-items:flex-end;gap:12px;height:160px;padding:8px 0;">${buckets.map((b,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="font-size:12px;font-weight:700;">${b}</div><div style="width:100%;background:var(--primary);border-radius:6px 6px 0 0;height:${Math.round((b/maxB)*120)}px;min-height:${b?4:0}px;"></div><div style="font-size:10px;color:var(--muted);">${labels[i]}</div></div>`).join('')}</div>`;
+  document.getElementById('rankList').innerHTML=[...records].sort((a,b)=>b.id-a.id).slice(0,15).map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><div style="flex:1;"><div style="font-weight:600;font-size:13px;">${esc(r.name)}</div><div style="font-size:11px;color:var(--muted);">${esc(r.seq)}・${r.date}</div></div><div style="font-size:15px;font-weight:700;color:var(--primary);">${r.scores.total}</div></div>`).join('');
+  document.getElementById('reviewList').innerHTML=top.length?`<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">目前最常出現的規則問題：</div>`+top.map(([code,n])=>`<div style="display:flex;justify-content:space-between;padding:8px 10px;background:var(--warn-bg);border-radius:8px;margin-bottom:6px;font-size:12px;"><span>${esc(code)}</span><strong>${n} 次</strong></div>`).join(''):'<div style="color:var(--muted);font-size:13px;">尚無錯誤統計</div>';
+}
+
+// ═══════════════════════════════════════════════════
+//  匯出 CSV
+// ═══════════════════════════════════════════════════
+function exportCSV(){
+  if(!records.length){showToast('❗ 尚無紀錄可匯出');return;}
+  const h=['Submission ID','姓名','學號','班級','課程','教師','Attempt','來源','分析日期','System','Form','Schema','Rule','Prompt','Model','完整性/20','格式/20','一致性/20','臨床推理/25','評估處置/15','總分/100','等級','需人工確認','規則問題數','雲端狀態','練習備註'];
+  const rows=records.map(r=>[r.submissionId||r.id,r.name,r.seq,r.className||'',r.course||'',r.reviewer,r.attempt||1,r.source||'',`${r.date} ${r.time}`,r.systemVersion||'',r.formVersion||'',r.schemaVersion||'',r.validation?.ruleVersion||r.ruleVersion||'',r.promptVersion||'',r.model||'',r.scores.completeness,r.scores.format,r.scores.consistency,r.scores.clinical,r.scores.management,r.scores.total,r.level,r.hasReview?'是':'否',r.validation?.issues?.length||0,r.cloudSync?.status||'',r.note||'']);
+  const csv='\uFEFF'+[h,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download=`AI驗光學習紀錄_${new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')}.csv`;a.click();showToast('✓ CSV 已匯出');
+}
+
+// ═══════════════════════════════════════════════════
+//  設定
+// ═══════════════════════════════════════════════════
+function saveCfg(){
+  C.gkey          = document.getElementById('cfg-gkey').value.trim();
+  C.gmodel        = document.getElementById('cfg-gmodel').value;
+  C.reviewer      = document.getElementById('cfg-reviewer').value.trim()||'李冠緯老師';
+  C.course        = document.getElementById('cfg-course').value.trim()||'視光學實驗';
+  C.classDefault  = document.getElementById('cfg-class').value.trim();
+  C.quality       = document.getElementById('cfg-quality').value;
+  C.sheetEndpoint = document.getElementById('cfg-sheet-endpoint').value.trim();
+  C.sheetToken    = document.getElementById('cfg-sheet-token').value.trim();
+  C.syncEnabled   = document.getElementById('cfg-sync-enabled').checked;
+  localStorage.setItem('voc_gkey',C.gkey);
+  localStorage.setItem('voc_gmodel',C.gmodel);
+  localStorage.setItem('voc_reviewer',C.reviewer);
+  localStorage.setItem('voc_course',C.course);
+  localStorage.setItem('voc_class',C.classDefault);
+  localStorage.setItem('voc_quality',C.quality);
+  localStorage.setItem('voc_sheet_endpoint',C.sheetEndpoint);
+  localStorage.setItem('voc_sheet_token',C.sheetToken);
+  localStorage.setItem('voc_sync_enabled',String(C.syncEnabled));
+  ['s-class','u-class'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=C.classDefault;});
+  showToast('✓ 設定已儲存');updateStatus();
+}
+
+function restoreCfg(){
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  s('cfg-gkey',C.gkey);s('cfg-gmodel',C.gmodel);s('cfg-reviewer',C.reviewer);s('cfg-quality',C.quality);
+  s('cfg-course',C.course);s('cfg-class',C.classDefault);s('cfg-sheet-endpoint',C.sheetEndpoint);s('cfg-sheet-token',C.sheetToken);
+  const cb=document.getElementById('cfg-sync-enabled');if(cb)cb.checked=C.syncEnabled;
+}
+
+function buildSheetPayload(rec){
+  const issueCodes=(rec.validation?.issues||[]).map(x=>x.code);
+  return {
+    type:'submission',class_token:C.sheetToken||'',submission_id:rec.submissionId||String(rec.id),client_timestamp:rec.submittedAt||new Date().toISOString(),
+    system_version:rec.systemVersion||APP_META.systemVersion,form_version:rec.formVersion||APP_META.formVersion,schema_version:rec.schemaVersion||APP_META.schemaVersion,
+    rule_version:rec.validation?.ruleVersion||rec.ruleVersion||APP_META.ruleVersion,prompt_version:rec.promptVersion||APP_META.promptVersion,model:rec.model||C.gmodel,
+    class_name:rec.className||'',course:rec.course||C.course,reviewer:rec.reviewer||C.reviewer,student_name:rec.name,student_id:rec.seq,
+    attempt:rec.attempt||1,source:rec.source||'',scores:rec.scores,level:rec.level,needs_review:!!rec.hasReview,issue_count:issueCodes.length,issue_codes:issueCodes,
+    learning_priorities:rec.feedback?.learning_priorities||[],note:rec.note||'',img_count:rec.imgCount||0,extracted:rec.extracted,validation:rec.validation,feedback:rec.feedback,
+    user_agent:navigator.userAgent
+  };
+}
+
+async function postSheetPayload(payload){
+  if(!C.sheetEndpoint) return {status:'skipped',message:'未設定 Google Sheet Web App URL'};
+  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),9000);
+  try{
+    await fetch(C.sheetEndpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:ctrl.signal,cache:'no-store'});
+    return {status:'sent',message:'已送出（Apps Script 跨域模式無法由瀏覽器讀取回應）',at:new Date().toISOString()};
+  }catch(e){
+    return {status:'failed',message:e.name==='AbortError'?'同步逾時':e.message,at:new Date().toISOString()};
+  }finally{clearTimeout(timer);}
+}
+
+async function syncRecordToSheet(rec){
+  if(!C.syncEnabled) return {status:'skipped',message:'自動同步已關閉'};
+  return await postSheetPayload(buildSheetPayload(rec));
+}
+
+async function testSheetSync(){
+  const el=document.getElementById('sheetResult');
+  saveCfg();
+  if(!C.sheetEndpoint){el.textContent='❌ 請先貼上 Apps Script Web App URL';el.style.color='var(--danger)';return;}
+  el.textContent='測試送出中...';el.style.color='var(--muted)';
+  const res=await postSheetPayload({type:'ping',class_token:C.sheetToken||'',client_timestamp:new Date().toISOString(),system_version:APP_META.systemVersion,user_agent:navigator.userAgent});
+  el.textContent=res.status==='sent'?'✅ 測試資料已送出；請到 Google Sheet 確認 SyncLog / Settings 狀態。':'❌ '+res.message;
+  el.style.color=res.status==='sent'?'var(--success)':'var(--danger)';
+}
+
+async function testAPI(){
+  const el=document.getElementById('cfgResult');
+  el.textContent='測試中...';el.style.color='var(--muted)';
+  try{
+    const key=document.getElementById('cfg-gkey').value||C.gkey;
+    const model=document.getElementById('cfg-gmodel').value||C.gmodel;
+    if(!key||!key.trim()) throw new Error('請輸入 Gemini API Key');
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+    const resp=await fetch(url,{method:'POST',headers:geminiHeaders(key),
+      body:JSON.stringify({contents:[{role:'user',parts:[{text:'請只回覆：連線成功'}]}],generationConfig:{maxOutputTokens:20}})});
+    if(!resp.ok){
+      const detail=await resp.text();
+      if(resp.status===404 && /model|available|new users|not found/i.test(detail)){
+        throw new Error(`HTTP 404：目前模型 ${model} 不可用。請選擇 gemini-3.6-flash 後再測試。`);
+      }
+      throw new Error(`HTTP ${resp.status}：${detail.slice(0,320)}`);
+    }
+    const d=await resp.json();
+    const reply=d.candidates?.[0]?.content?.parts?.[0]?.text||'(無回應)';
+    el.textContent='✅ 連線成功：'+reply; el.style.color='var(--success)';
+  }catch(e){
+    el.textContent='❌ '+e.message; el.style.color='var(--danger)';
+  }
+}
+
+function togglePass(inp,btn){
+  const i=document.getElementById(inp),b=document.getElementById(btn);
+  if(!i||!b) return;
+  i.type=i.type==='password'?'text':'password';
+  b.textContent=i.type==='password'?'👁 顯示':'🙈 隱藏';
+}
+
+function updateStatus(){
+  const dot=document.getElementById('sdot'), txt=document.getElementById('stxt');
+  if(C.gkey&&C.gkey.trim()){
+    dot.className='dot ok'; txt.textContent='V0.6.3・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
+  } else {
+    dot.className='dot err'; txt.textContent='請設定 API Key';
+  }
+}
+function recheckStatus(){ updateStatus(); }
+
+// ═══════════════════════════════════════════════════
+//  教師後台密碼鎖 + 頁面切換
+// ═══════════════════════════════════════════════════
+function isAdminUnlocked(){
+  return sessionStorage.getItem('voc_admin_unlocked') === '1';
+}
+
+async function sha256Hex(value){
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function openAdminGate(targetPage='cfg'){
+  pendingAdminPage = targetPage;
+  const modal=document.getElementById('adminGateModal');
+  const input=document.getElementById('adminPasswordInput');
+  const err=document.getElementById('adminGateError');
+  if(err){err.style.display='none';err.textContent='';}
+  if(input) input.value='';
+  modal.classList.add('open');
+  setTimeout(()=>input?.focus(),80);
+}
+
+function closeAdminGate(){
+  document.getElementById('adminGateModal')?.classList.remove('open');
+}
+
+async function submitAdminPassword(){
+  const input=document.getElementById('adminPasswordInput');
+  const err=document.getElementById('adminGateError');
+  const raw=input?.value||'';
+  if(!raw){
+    err.textContent='請輸入管理密碼';err.style.display='block';input?.focus();return;
+  }
+  try{
+    const hash=await sha256Hex(raw);
+    if(hash !== ADMIN_PASSWORD_SHA256){
+      err.textContent='密碼錯誤，請重新輸入。';err.style.display='block';
+      input.value='';input.focus();return;
+    }
+    sessionStorage.setItem('voc_admin_unlocked','1');
+    closeAdminGate();
+    updateAdminUI();
+    navigatePage(pendingAdminPage);
+    showToast('✓ 教師後台已解鎖');
+  }catch(e){
+    err.textContent='無法驗證密碼：'+e.message;err.style.display='block';
+  }
+}
+
+function logoutAdmin(){
+  sessionStorage.removeItem('voc_admin_unlocked');
+  updateAdminUI();
+  const activeProtected=[...ADMIN_PROTECTED_PAGES].some(p=>document.getElementById('page-'+p)?.classList.contains('active'));
+  if(activeProtected) navigatePage('scan');
+  showToast('✓ 教師後台已鎖定');
+}
+
+function updateAdminUI(){
+  const btn=document.getElementById('adminLogoutBtn');
+  if(btn) btn.style.display=isAdminUnlocked()?'inline-flex':'none';
+}
+
+function navigatePage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('tab-'+p).classList.add('active');
+  if(p==='records') renderRecords();
+  if(p==='stats')   renderStats();
+  if(p==='cfg')     restoreCfg();
+}
+
+function gp(p){
+  if(ADMIN_PROTECTED_PAGES.has(p) && !isAdminUnlocked()){
+    openAdminGate(p);
+    return;
+  }
+  navigatePage(p);
+}
+
+// ═══════════════════════════════════════════════════
+//  Toast
+// ═══════════════════════════════════════════════════
+function showToast(m){
+  const t=document.getElementById('toast');
+  t.textContent=m; t.style.display='block';
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.style.display='none',2800);
+}
+
+// ═══════════════════════════════════════════════════
+//  初始化
+// ═══════════════════════════════════════════════════
+(async function init(){
+  await openImgDB();
+  updateStatus();
+  updateAdminUI();
+  renderRecords();
+  ['s-class','u-class'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=C.classDefault;});
+})();
+</script>
+
+<div style="text-align:center;padding:18px 0 24px;font-size:11px;color:#bbb;">
+  © 2026 Kuan-Wei Lee. All rights reserved.<br>
+  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.3 Beta<br>
+  <span style="font-size:10px;color:#ccc;">AI 回饋僅供教學使用，最終判定仍由授課教師確認</span>
+</div>
+</body>
+</html>
