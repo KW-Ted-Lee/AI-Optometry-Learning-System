@@ -5,7 +5,7 @@
 <meta name="author" content="Kuan-Wei Lee">
 <meta name="copyright" content="© 2026 Kuan-Wei Lee. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 驗光紀錄輔助學習系統 V0.6.5 Beta</title>
+<title>AI 驗光紀錄輔助學習系統 V0.6.6 Resilient Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -163,7 +163,7 @@ table.rec tr:hover td{background:#f8f8f6;}
   <div class="topbar-brand">
     <div class="topbar-logo">👁</div>
     <div>
-      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.5 Beta</span></div>
+      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.6 Resilient Beta</span></div>
       <div class="topbar-sub">馬偕醫護管理專科學校・視光學科｜V3.3 紙本紀錄辨識・規則檢核・個人化學習回饋・Google Sheet 班級資料</div>
     </div>
   </div>
@@ -397,7 +397,7 @@ table.rec tr:hover td{background:#f8f8f6;}
 ════════════════════════════════════════ -->
 <div class="page" id="page-cfg">
   <div class="card card-blue">
-    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.5 Pilot：使用者自己的 Key）</div>
+    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.6 Resilient：使用者自己的 Key）</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div class="fg">
         <label>Gemini API Key</label>
@@ -405,13 +405,15 @@ table.rec tr:hover td{background:#f8f8f6;}
           <input type="password" id="cfg-gkey" placeholder="AQ... 或 AIza..." style="flex:1;">
           <button class="btn o" onclick="togglePass('cfg-gkey','btn-eye')" id="btn-eye" style="padding:8px 12px;font-size:12px;">👁 顯示</button>
         </div>
-        <div class="hint">V0.6.5 使用 Gemini 3.6 Flash（Google 對新使用者建議的穩定 Flash 模型）。支援 Google AI Studio 新式 AQ 授權金鑰與舊式受限 AIza 金鑰；請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
+        <div class="hint">V0.6.6 以 Gemini 3.5 Flash 作為主要辨識模型，優先兼顧固定表單辨識品質與吞吐量；遇到 429 / 5xx 暫時性錯誤時，系統會自動重試最多 4 次並加入隨機延遲，必要時自動切換至 Gemini 3.5 Flash-Lite 作為高吞吐量文件解析備援。學生不需要手動重傳表單。請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
       </div>
       <div class="fg">
         <label>使用模型</label>
         <select id="cfg-gmodel">
-          <option value="gemini-3.6-flash">gemini-3.6-flash（目前測試基準・建議）</option>
-          <option value="gemini-3.8-flash">gemini-3.8-flash（最新穩定版・後續比較）</option>
+          <option value="gemini-3.5-flash">gemini-3.5-flash（主要模型・建議）</option>
+          <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（高吞吐量文件解析・備援）</option>
+          <option value="gemini-3.6-flash">gemini-3.6-flash（研究比較）</option>
+          <option value="gemini-3.8-flash">gemini-3.8-flash（研究比較）</option>
         </select>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -481,14 +483,14 @@ table.rec tr:hover td{background:#f8f8f6;}
   </div>
 
   <div class="card card-warn">
-    <div class="card-title" style="color:var(--warn);">📌 V0.6.4 Classroom Pilot 說明</div>
+    <div class="card-title" style="color:var(--warn);">📌 V0.6.6 Resilient Classroom Pilot 說明</div>
     <div style="font-size:12px;line-height:1.9;color:#5a4a00;">
       • 本系統辨識固定版型「眼睛及健康篩檢紀錄表 V3.3」，並以 Recording correctness 為主要規則標準。<br>
-      • V0.6.4 的 Expected Findings 僅供教科書參照，不自行建立疾病診斷或轉介門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
+      • V0.6.6 的 Expected Findings 僅供教科書參照，不自行建立疾病診斷或轉介門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
       • 原始影像只保存在目前裝置 IndexedDB；Google Sheet 僅接收學生學習資料、分數、規則結果與去識別化 JSON。<br>
       • A 區受檢者個人識別資料不納入 AI 結構化輸出。上傳前仍應採匿名或去識別化教學流程。<br>
       • 教師紀錄、學習分析與後台設定已加上 session 密碼鎖；此為前端存取控制，正式版仍應改用後端身分驗證。<br>
-      • V0.6.4 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
+      • V0.6.6 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
       • © 2026 Kuan-Wei Lee. All rights reserved.
     </div>
   </div>
@@ -543,7 +545,7 @@ table.rec tr:hover td{background:#f8f8f6;}
 //  設定 & 資料
 // ═══════════════════════════════════════════════════
 const APP_META = {
-  systemVersion:'V0.6.5 Beta',
+  systemVersion:'V0.6.6 Resilient Beta',
   formVersion:'V3.3',
   schemaVersion:'3.3.1',
   ruleVersion:'V0.6.4-recording+expected-v3.3',
@@ -558,7 +560,7 @@ let pendingAdminPage = 'cfg';
 
 let C = {
   gkey:          localStorage.getItem('voc_gkey')          || '',
-  gmodel:        localStorage.getItem('voc_gmodel')        || 'gemini-3.6-flash',
+  gmodel:        localStorage.getItem('voc_gmodel')        || 'gemini-3.5-flash',
   reviewer:      localStorage.getItem('voc_reviewer')      || '李冠緯老師',
   course:        localStorage.getItem('voc_course')        || '視光學實驗（一）',
   classDefault:  localStorage.getItem('voc_class')         || '視一甲',
@@ -570,11 +572,19 @@ let C = {
   syncEnabled:   localStorage.getItem('voc_sync_enabled') !== 'false'
 };
 
-// V0.6.2 模型遷移：新使用者已無法使用 gemini-2.5-flash 時，自動改成 3.6 Flash。
+// V0.6.6 模型遷移：舊版預設模型自動移至目前的高吞吐量主模型。
 const LEGACY_GEMINI_MODELS = new Set(['gemini-2.5-flash','gemini-2.5-flash-preview-05-20','gemini-2.0-flash','gemini-2.0-flash-001']);
 if (LEGACY_GEMINI_MODELS.has(C.gmodel)) {
-  C.gmodel = 'gemini-3.6-flash';
+  C.gmodel = 'gemini-3.5-flash';
   localStorage.setItem('voc_gmodel', C.gmodel);
+}
+// 從 V0.6.5 升級時，若仍保留當時的預設 3.6 Flash，只遷移一次到新的 3.5 Flash 主模型。
+if (!localStorage.getItem('voc_v066_model_migrated')) {
+  if (C.gmodel === 'gemini-3.6-flash') {
+    C.gmodel = 'gemini-3.5-flash';
+    localStorage.setItem('voc_gmodel', C.gmodel);
+  }
+  localStorage.setItem('voc_v066_model_migrated','true');
 }
 
 let records = JSON.parse(localStorage.getItem('voc_records') || '[]');
@@ -703,7 +713,7 @@ Recording 主要標準：Carlson & Kurtz 4e；Elliott, Clinical Procedures in Pr
 
 const FEEDBACK_PROMPT = `你是視光學實驗課的 AI 教學回饋助教。你會收到：
 (1) V3.3 固定紙本表單辨識出的結構化 JSON；
-(2) V0.6.5 Recording Rule Engine 的 errors / warnings / review；
+(2) V0.6.6 Recording Rule Engine 的 errors / warnings / review；
 (3) 程式已計算的「完整性、格式正確性、紀錄一致性」分數；
 (4) Expected Findings 教科書參照結果（此層不扣 Recording 分數）。
 
@@ -1149,10 +1159,10 @@ function clearUploads(){
 // ═══════════════════════════════════════════════════
 //  Gemini API：固定表單辨識 + 教學回饋
 // ═══════════════════════════════════════════════════
-function geminiUrl(){
+function geminiUrl(model=C.gmodel){
   const key=(C.gkey||'').trim();
   if(!key) throw new Error('請先在設定頁輸入 Gemini API Key');
-  return `https://generativelanguage.googleapis.com/v1beta/models/${C.gmodel}:generateContent`;
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 }
 
 function geminiHeaders(key=C.gkey){
@@ -1171,7 +1181,66 @@ function safeJson(text){
   }
 }
 
-async function extractRecordWithGemini(images){
+const GEMINI_RETRY = {
+  maxAttempts:4,
+  primary:'gemini-3.5-flash',
+  fallback:'gemini-3.5-flash-lite',
+  retryableStatus:new Set([429,500,502,503,504]),
+  // 每個等待區間都會再加入隨機 jitter，避免全班同時重送又撞在一起。
+  delayWindows:[[1800,3200],[3800,6200],[7200,10500]]
+};
+
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function randomBetween(min,max){return Math.floor(min+Math.random()*(max-min+1));}
+function fallbackModelFor(primary){
+  return primary==='gemini-3.5-flash-lite' ? 'gemini-3.5-flash' : GEMINI_RETRY.fallback;
+}
+function friendlyGeminiError(status,detail=''){
+  if(status===429) return 'Gemini 目前請求量較高或已達暫時性速率限制。';
+  if([500,502,503,504].includes(status)) return 'Gemini 目前服務繁忙，屬於暫時性服務錯誤。';
+  if(status===404) return '目前選用的 Gemini 模型對此 API Key 不可用。';
+  if(status===401||status===403) return 'Gemini API Key 或存取權限驗證失敗。';
+  return `Gemini API HTTP ${status}${detail?`：${detail.slice(0,120)}`:''}`;
+}
+
+async function geminiRequest(body,{key=C.gkey,primaryModel=C.gmodel,onRetry=null,label='Gemini'}={}){
+  const models=[primaryModel,primaryModel,fallbackModelFor(primaryModel),fallbackModelFor(primaryModel)];
+  let lastError=null;
+  for(let i=0;i<GEMINI_RETRY.maxAttempts;i++){
+    const attempt=i+1;
+    const model=models[i];
+    try{
+      const resp=await fetch(geminiUrl(model),{method:'POST',headers:geminiHeaders(key),body:JSON.stringify(body)});
+      if(resp.ok){
+        const data=await resp.json();
+        return {data,modelUsed:model,attempts:attempt};
+      }
+      const detail=await resp.text();
+      const retryable=GEMINI_RETRY.retryableStatus.has(resp.status) || (resp.status===404 && model!==fallbackModelFor(primaryModel));
+      lastError=new Error(`${friendlyGeminiError(resp.status,detail)} [HTTP ${resp.status}]`);
+      lastError.status=resp.status;
+      lastError.detail=detail;
+      if(!retryable || attempt>=GEMINI_RETRY.maxAttempts) throw lastError;
+    }catch(err){
+      // fetch 本身的網路錯誤也視為暫時性錯誤；401/403 等 HTTP 非 retryable 已在上方直接丟出。
+      lastError=err;
+      if(err.status && !GEMINI_RETRY.retryableStatus.has(err.status) && err.status!==404) throw err;
+      if(attempt>=GEMINI_RETRY.maxAttempts) throw err;
+    }
+    const [min,max]=GEMINI_RETRY.delayWindows[Math.min(i,GEMINI_RETRY.delayWindows.length-1)];
+    const delay=randomBetween(min,max);
+    const nextModel=models[i+1];
+    if(typeof onRetry==='function') onRetry({attempt,nextAttempt:attempt+1,delay,model,currentModel:model,nextModel,label,error:lastError});
+    await sleep(delay);
+  }
+  throw lastError||new Error('Gemini 暫時無法完成請求');
+}
+
+function extractGeminiText(d){
+  return d?.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+}
+
+async function extractRecordWithGemini(images,onRetry=null){
   const parts=[];
   images.forEach(img=>parts.push({inlineData:{mimeType:img.mime,data:img.b64}}));
   parts.push({text:'請依固定 V3.3 兩頁表單版型辨識以上影像。A區只讀取年齡欄位供教科書期望值比較；姓名、出生日期、電話、地址、識別號等個資完全忽略，只輸出指定 JSON。'});
@@ -1180,25 +1249,19 @@ async function extractRecordWithGemini(images){
     contents:[{role:'user',parts}],
     generationConfig:{temperature:0,maxOutputTokens:12000,topP:0.8,responseMimeType:'application/json'}
   };
-  const resp=await fetch(geminiUrl(),{method:'POST',headers:geminiHeaders(),body:JSON.stringify(body)});
-  if(!resp.ok){const t=await resp.text();throw new Error(`Gemini 辨識錯誤 HTTP ${resp.status}：${t.slice(0,200)}`);}
-  const d=await resp.json();
-  const text=d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
-  return safeJson(text);
+  const result=await geminiRequest(body,{onRetry,label:'V3.3 表單辨識'});
+  return {record:safeJson(extractGeminiText(result.data)),modelUsed:result.modelUsed,attempts:result.attempts};
 }
 
-async function generateFeedbackWithGemini(extracted, validation, expectedFindings){
+async function generateFeedbackWithGemini(extracted, validation, expectedFindings,onRetry=null){
   const payload={extracted_record:extracted,rule_validation:validation,expected_findings:expectedFindings};
   const body={
     systemInstruction:{parts:[{text:FEEDBACK_PROMPT}]},
     contents:[{role:'user',parts:[{text:JSON.stringify(payload)}]}],
     generationConfig:{temperature:0.15,maxOutputTokens:7000,topP:0.85,responseMimeType:'application/json'}
   };
-  const resp=await fetch(geminiUrl(),{method:'POST',headers:geminiHeaders(),body:JSON.stringify(body)});
-  if(!resp.ok){const t=await resp.text();throw new Error(`Gemini 回饋錯誤 HTTP ${resp.status}：${t.slice(0,200)}`);}
-  const d=await resp.json();
-  const text=d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
-  return safeJson(text);
+  const result=await geminiRequest(body,{onRetry,label:'AI 教學回饋'});
+  return {feedback:safeJson(extractGeminiText(result.data)),modelUsed:result.modelUsed,attempts:result.attempts};
 }
 
 // ═══════════════════════════════════════════════════
@@ -1388,12 +1451,21 @@ async function doEvaluate(images,name,seq,className,courseName,note,resultElemId
   const el=document.getElementById(resultElemId);
   el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:14px;"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:13px;color:var(--muted);text-align:center;">步驟 1/4：AI 正在辨識 V3.3 與手寫紀錄...<br><span style="font-size:11px;">接著會進行規則檢核、個人化回饋與班級資料同步</span></div></div>`;
   try{
-    const extracted=await extractRecordWithGemini(images);
-    el.querySelector('div div:last-child').innerHTML='步驟 2/4：V0.6.5 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
+    const progressBox=()=>el.querySelector('div div:last-child');
+    const retryNotice=({nextAttempt,delay,currentModel,nextModel,label})=>{
+      const sec=(delay/1000).toFixed(1);
+      const switched=currentModel!==nextModel;
+      const box=progressBox();
+      if(box) box.innerHTML=`☁️ ${label}目前使用人數較多，系統正在自動重新嘗試（第 ${nextAttempt}/4 次）...<br><span style="font-size:11px;">約 ${sec} 秒後重試${switched?`，並切換至備援模型 ${nextModel}`:`・目前模型 ${currentModel}`}。請不要關閉頁面，也不需要重新上傳表單。</span>`;
+    };
+    const extractResult=await extractRecordWithGemini(images,retryNotice);
+    const extracted=extractResult.record;
+    progressBox().innerHTML='步驟 2/4：V0.6.6 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
     const validation=validateRecord(extracted);
     const expectedFindings=compareExpectedFindings(extracted);
-    el.querySelector('div div:last-child').innerHTML='步驟 3/4：正在比對教科書 Expected Findings，並產生個人化修正建議...';
-    const feedback=await generateFeedbackWithGemini(extracted,validation,expectedFindings);
+    progressBox().innerHTML='步驟 3/4：正在比對教科書 Expected Findings，並產生個人化修正建議...';
+    const feedbackResult=await generateFeedbackWithGemini(extracted,validation,expectedFindings,retryNotice);
+    const feedback=feedbackResult.feedback;
     const scores={
       completeness:validation.scores.completeness,
       format:validation.scores.format,
@@ -1409,7 +1481,7 @@ async function doEvaluate(images,name,seq,className,courseName,note,resultElemId
       id:recId,submissionId:`VOC-${recId}-${Math.random().toString(36).slice(2,8).toUpperCase()}`,
       name,seq,className:className||'',course:courseName||'',attempt,source,note,reviewer:C.reviewer,
       submittedAt:new Date().toISOString(),date:new Date().toLocaleDateString('zh-TW'),time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),
-      systemVersion:APP_META.systemVersion,formVersion:APP_META.formVersion,schemaVersion:APP_META.schemaVersion,ruleVersion:APP_META.ruleVersion,promptVersion:APP_META.promptVersion,model:C.gmodel,
+      systemVersion:APP_META.systemVersion,formVersion:APP_META.formVersion,schemaVersion:APP_META.schemaVersion,ruleVersion:APP_META.ruleVersion,promptVersion:APP_META.promptVersion,model:(extractResult.modelUsed===feedbackResult.modelUsed?extractResult.modelUsed:`辨識:${extractResult.modelUsed}｜回饋:${feedbackResult.modelUsed}`),
       scores,level,hasReview:validation.needsReview||!!feedback.teacher_review_needed||(expectedFindings.summary?.attention_count||0)>0,extracted,validation,expectedFindings,feedback,imgCount:images.length,cloudSync:{status:'pending'}
     };
     records.unshift(rec);saveRecords();
@@ -1420,8 +1492,9 @@ async function doEvaluate(images,name,seq,className,courseName,note,resultElemId
     renderScoreResult(el,rec);
     showToast(`✓ 分析完成：${name}（${scores.total} 分）${rec.cloudSync.status==='sent'?'・已送出班級資料':''}`);
   }catch(e){
-    el.innerHTML=`<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;font-size:13px;">❌ 分析失敗：${esc(e.message)}<br><div style="font-size:11px;margin-top:6px;color:#c62828;">請確認 API Key、網路、V3.3 影像品質與設定</div></div>`;
-    showToast('❌ 分析失敗');
+    const busy=/429|500|502|503|504|繁忙|速率限制|暫時/i.test(String(e.message||''));
+    el.innerHTML=`<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;font-size:13px;">❌ ${busy?'Gemini 目前仍然繁忙，4 次自動嘗試後尚未成功。':'分析失敗：'+esc(e.message)}<br><div style="font-size:11px;margin-top:6px;color:#c62828;line-height:1.7;">${busy?'你已上傳的表單仍保留在目前頁面，不需要重新上傳；稍後直接再次按「開始分析」即可。系統會再次採用隨機延遲與備援模型。':'請確認 API Key、網路、V3.3 影像品質與設定。'}</div></div>`;
+    showToast(busy?'☁️ Gemini 暫時繁忙，表單已保留':'❌ 分析失敗');
   }
 }
 
@@ -1753,19 +1826,14 @@ async function testAPI(){
     const key=document.getElementById('cfg-gkey').value||C.gkey;
     const model=document.getElementById('cfg-gmodel').value||C.gmodel;
     if(!key||!key.trim()) throw new Error('請輸入 Gemini API Key');
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    const resp=await fetch(url,{method:'POST',headers:geminiHeaders(key),
-      body:JSON.stringify({contents:[{role:'user',parts:[{text:'請只回覆：連線成功'}]}],generationConfig:{maxOutputTokens:20}})});
-    if(!resp.ok){
-      const detail=await resp.text();
-      if(resp.status===404 && /model|available|new users|not found/i.test(detail)){
-        throw new Error(`HTTP 404：目前模型 ${model} 不可用。請選擇 gemini-3.6-flash 後再測試。`);
-      }
-      throw new Error(`HTTP ${resp.status}：${detail.slice(0,320)}`);
-    }
-    const d=await resp.json();
-    const reply=d.candidates?.[0]?.content?.parts?.[0]?.text||'(無回應)';
-    el.textContent='✅ 連線成功：'+reply; el.style.color='var(--success)';
+    const body={contents:[{role:'user',parts:[{text:'請只回覆：連線成功'}]}],generationConfig:{maxOutputTokens:20}};
+    const result=await geminiRequest(body,{key,primaryModel:model,label:'Gemini 連線測試',onRetry:({nextAttempt,delay,currentModel,nextModel})=>{
+      const sec=(delay/1000).toFixed(1);
+      el.textContent=`☁️ 服務繁忙，自動重試第 ${nextAttempt}/4 次（約 ${sec} 秒）${currentModel!==nextModel?`，切換備援 ${nextModel}`:''}`;
+      el.style.color='var(--accent)';
+    }});
+    const reply=extractGeminiText(result.data)||'(無回應)';
+    el.textContent=`✅ 連線成功：${reply}｜實際模型：${result.modelUsed}｜第 ${result.attempts} 次成功`; el.style.color='var(--success)';
   }catch(e){
     el.textContent='❌ '+e.message; el.style.color='var(--danger)';
   }
@@ -1781,7 +1849,7 @@ function togglePass(inp,btn){
 function updateStatus(){
   const dot=document.getElementById('sdot'), txt=document.getElementById('stxt');
   if(C.gkey&&C.gkey.trim()){
-    dot.className='dot ok'; txt.textContent='V0.6.4・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
+    dot.className='dot ok'; txt.textContent='V0.6.6・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
   } else {
     dot.className='dot err'; txt.textContent='請設定 API Key';
   }
@@ -1894,7 +1962,7 @@ function showToast(m){
 
 <div style="text-align:center;padding:18px 0 24px;font-size:11px;color:#bbb;">
   © 2026 Kuan-Wei Lee. All rights reserved.<br>
-  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.5 Beta<br>
+  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.6 Resilient Beta<br>
   <span style="font-size:10px;color:#ccc;">AI 回饋僅供教學使用，最終判定仍由授課教師確認</span>
 </div>
 </body>
