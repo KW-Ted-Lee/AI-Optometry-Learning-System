@@ -5,7 +5,7 @@
 <meta name="author" content="Kuan-Wei Lee">
 <meta name="copyright" content="© 2026 Kuan-Wei Lee. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 驗光紀錄輔助學習系統 V0.6.3 Beta</title>
+<title>AI 驗光紀錄輔助學習系統 V0.6.5 Beta</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -163,7 +163,7 @@ table.rec tr:hover td{background:#f8f8f6;}
   <div class="topbar-brand">
     <div class="topbar-logo">👁</div>
     <div>
-      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.3 Beta</span></div>
+      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.5 Beta</span></div>
       <div class="topbar-sub">馬偕醫護管理專科學校・視光學科｜V3.3 紙本紀錄辨識・規則檢核・個人化學習回饋・Google Sheet 班級資料</div>
     </div>
   </div>
@@ -233,10 +233,11 @@ table.rec tr:hover td{background:#f8f8f6;}
       <!-- 學生基本資料 -->
       <div class="card">
         <div class="card-title">👤 學生基本資料</div>
-        <div class="g3" style="gap:10px;">
+        <div class="g2" style="gap:10px;">
           <div class="fg"><label>學生姓名 *</label><input type="text" id="s-name" placeholder="請填入姓名"></div>
           <div class="fg"><label>學號 *</label><input type="text" id="s-seq" placeholder="學生學號"></div>
-          <div class="fg"><label>班級</label><input type="text" id="s-class" placeholder="例如：五視一孝"></div>
+          <div class="fg"><label>班級 *</label><select id="s-class"></select></div>
+          <div class="fg"><label>本次課程 *</label><select id="s-course"></select></div>
         </div>
         <div style="margin-top:8px;">
           <div class="fg"><label>備註（選填）</label><input type="text" id="s-note" placeholder="本次練習備註..."></div>
@@ -302,10 +303,11 @@ table.rec tr:hover td{background:#f8f8f6;}
       <!-- 學生資料 -->
       <div class="card">
         <div class="card-title">👤 學生基本資料</div>
-        <div class="g3" style="gap:10px;">
+        <div class="g2" style="gap:10px;">
           <div class="fg"><label>學生姓名 *</label><input type="text" id="u-name" placeholder="請填入姓名"></div>
           <div class="fg"><label>學號 *</label><input type="text" id="u-seq" placeholder="學生學號"></div>
-          <div class="fg"><label>班級</label><input type="text" id="u-class" placeholder="例如：五視一孝"></div>
+          <div class="fg"><label>班級 *</label><select id="u-class"></select></div>
+          <div class="fg"><label>本次課程 *</label><select id="u-course"></select></div>
         </div>
         <div style="margin-top:8px;">
           <div class="fg"><label>備註（選填）</label><input type="text" id="u-note" placeholder="本次練習備註..."></div>
@@ -395,7 +397,7 @@ table.rec tr:hover td{background:#f8f8f6;}
 ════════════════════════════════════════ -->
 <div class="page" id="page-cfg">
   <div class="card card-blue">
-    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.3 Pilot：使用者自己的 Key）</div>
+    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.5 Pilot：使用者自己的 Key）</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div class="fg">
         <label>Gemini API Key</label>
@@ -403,7 +405,7 @@ table.rec tr:hover td{background:#f8f8f6;}
           <input type="password" id="cfg-gkey" placeholder="AQ... 或 AIza..." style="flex:1;">
           <button class="btn o" onclick="togglePass('cfg-gkey','btn-eye')" id="btn-eye" style="padding:8px 12px;font-size:12px;">👁 顯示</button>
         </div>
-        <div class="hint">V0.6.3 使用 Gemini 3.6 Flash（Google 對新使用者建議的穩定 Flash 模型）。支援 Google AI Studio 新式 AQ 授權金鑰與舊式受限 AIza 金鑰；請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
+        <div class="hint">V0.6.5 使用 Gemini 3.6 Flash（Google 對新使用者建議的穩定 Flash 模型）。支援 Google AI Studio 新式 AQ 授權金鑰與舊式受限 AIza 金鑰；請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
       </div>
       <div class="fg">
         <label>使用模型</label>
@@ -429,9 +431,20 @@ table.rec tr:hover td{background:#f8f8f6;}
         <div class="hint">分析完成後只同步去識別化的學習資料與 JSON，不上傳原始紀錄影像。</div>
       </div>
       <div class="g2">
-        <div class="fg"><label>課程名稱</label><input type="text" id="cfg-course" placeholder="視光學實驗"></div>
-        <div class="fg"><label>預設班級</label><input type="text" id="cfg-class" placeholder="例如：五視一孝"></div>
+        <div class="fg"><label>預設課程</label><select id="cfg-course"></select></div>
+        <div class="fg"><label>預設班級</label><select id="cfg-class"></select></div>
       </div>
+      <div class="g2">
+        <div class="fg">
+          <label>可選班級（逗號分隔）</label>
+          <input type="text" id="cfg-class-options" placeholder="視一甲, 視二甲">
+        </div>
+        <div class="fg">
+          <label>可選課程（逗號分隔）</label>
+          <input type="text" id="cfg-course-options" placeholder="視光學實驗（一）, 視光學實驗（二）, 視光學實驗（三）">
+        </div>
+      </div>
+      <div class="hint">建議所有班級共用同一個 Google Sheet；每次送出時由學生選擇「班級＋本次課程」，後台即可依兩個欄位分組統計。</div>
       <div class="fg">
         <label>班級同步碼（選填）</label>
         <input type="password" id="cfg-sheet-token" placeholder="與 Apps Script 的 CLASS_TOKEN 相同">
@@ -468,14 +481,14 @@ table.rec tr:hover td{background:#f8f8f6;}
   </div>
 
   <div class="card card-warn">
-    <div class="card-title" style="color:var(--warn);">📌 V0.6 Classroom Pilot 說明</div>
+    <div class="card-title" style="color:var(--warn);">📌 V0.6.4 Classroom Pilot 說明</div>
     <div style="font-size:12px;line-height:1.9;color:#5a4a00;">
       • 本系統辨識固定版型「眼睛及健康篩檢紀錄表 V3.3」，並以 Recording correctness 為主要規則標準。<br>
-      • V0.6 不自行建立疾病診斷或轉介數值門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
+      • V0.6.4 的 Expected Findings 僅供教科書參照，不自行建立疾病診斷或轉介門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
       • 原始影像只保存在目前裝置 IndexedDB；Google Sheet 僅接收學生學習資料、分數、規則結果與去識別化 JSON。<br>
       • A 區受檢者個人識別資料不納入 AI 結構化輸出。上傳前仍應採匿名或去識別化教學流程。<br>
       • 教師紀錄、學習分析與後台設定已加上 session 密碼鎖；此為前端存取控制，正式版仍應改用後端身分驗證。<br>
-      • V0.6 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
+      • V0.6.4 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
       • © 2026 Kuan-Wei Lee. All rights reserved.
     </div>
   </div>
@@ -530,11 +543,11 @@ table.rec tr:hover td{background:#f8f8f6;}
 //  設定 & 資料
 // ═══════════════════════════════════════════════════
 const APP_META = {
-  systemVersion:'V0.6.3 Beta',
+  systemVersion:'V0.6.5 Beta',
   formVersion:'V3.3',
-  schemaVersion:'3.3.0',
-  ruleVersion:'V0.6-recording-v3.3',
-  promptVersion:'V0.6-v3.3'
+  schemaVersion:'3.3.1',
+  ruleVersion:'V0.6.4-recording+expected-v3.3',
+  promptVersion:'V0.6.4-v3.3'
 };
 
 // 教師後台密碼：僅保存 SHA-256 雜湊，不在前端原始碼保存明文。
@@ -547,8 +560,10 @@ let C = {
   gkey:          localStorage.getItem('voc_gkey')          || '',
   gmodel:        localStorage.getItem('voc_gmodel')        || 'gemini-3.6-flash',
   reviewer:      localStorage.getItem('voc_reviewer')      || '李冠緯老師',
-  course:        localStorage.getItem('voc_course')        || '視光學實驗',
-  classDefault:  localStorage.getItem('voc_class')         || '',
+  course:        localStorage.getItem('voc_course')        || '視光學實驗（一）',
+  classDefault:  localStorage.getItem('voc_class')         || '視一甲',
+  classOptions:  JSON.parse(localStorage.getItem('voc_class_options') || '["視一甲","視二甲"]'),
+  courseOptions: JSON.parse(localStorage.getItem('voc_course_options') || '["視光學實驗（一）","視光學實驗（二）","視光學實驗（三）"]'),
   quality:       localStorage.getItem('voc_quality')       || 'medium',
   sheetEndpoint: localStorage.getItem('voc_sheet_endpoint')|| '',
   sheetToken:    localStorage.getItem('voc_sheet_token')   || '',
@@ -638,6 +653,7 @@ Recording 主要標準：Carlson & Kurtz 4e；Elliott, Clinical Procedures in Pr
 【固定 JSON 結構】
 {
   "document":{"form_version":"V3.3|unknown","pages_detected":0,"readability":"good|partial|poor","document_warnings":[]},
+  "A":{"age":null},
   "B":{
     "chief_complaints":[],"ocular_history":[],"correction_history":[],"systemic_history":[],"family_ocular_history":[],
     "drug_allergy":{"status":null,"detail":null,"confidence":0},"current_medication":{"value":null,"confidence":0}
@@ -687,8 +703,9 @@ Recording 主要標準：Carlson & Kurtz 4e；Elliott, Clinical Procedures in Pr
 
 const FEEDBACK_PROMPT = `你是視光學實驗課的 AI 教學回饋助教。你會收到：
 (1) V3.3 固定紙本表單辨識出的結構化 JSON；
-(2) V0.6 Recording Rule Engine 的 errors / warnings / review；
-(3) 程式已計算的「完整性、格式正確性、紀錄一致性」分數。
+(2) V0.6.5 Recording Rule Engine 的 errors / warnings / review；
+(3) 程式已計算的「完整性、格式正確性、紀錄一致性」分數；
+(4) Expected Findings 教科書參照結果（此層不扣 Recording 分數）。
 
 你的任務不是推翻規則引擎，而是評估較高層次的「臨床推理」與「Problem List / Plan / Patient Education 連結」，並產生學生可立即採取行動的個人化回饋。
 
@@ -696,9 +713,11 @@ const FEEDBACK_PROMPT = `你是視光學實驗課的 AI 教學回饋助教。你
 - 不得做疾病診斷或取代教師、驗光師、眼科醫師的臨床判斷。
 - 不得創造表單未提供的結果。
 - confidence < 0.65 的欄位不能當成確定錯誤，只能要求人工確認。
-- V0.6 尚未由教師定稿的疾病／轉介數值門檻（如 IOP 閾值）不得自行判為一定異常。
+- Expected Findings 只代表教科書參照，不等於診斷、轉介門檻或紀錄錯誤；不得因 Expected Findings attention 直接扣 Recording 分數。
+- V0.6.4 尚未由教師定稿的疾病／轉介數值門檻不得自行判為一定異常。
 - Recording correctness 優先：Carlson & Kurtz 4e 為主要標準；Elliott 4e 等效且完整的記錄可接受。
-- 臨床推理著重 B→C→D→E 是否形成合理證據鏈；管理分數著重 Problem List 是否被 Plan、追蹤、進一步檢查、轉介或衛教回應。
+- 臨床推理著重 B→C→D→E 是否形成合理證據鏈；若 Expected Findings 出現 attention，只能檢查學生是否有合理回應/註記，不能自行下診斷。
+- 管理分數著重 Problem List 是否被 Plan、追蹤、進一步檢查、轉介或衛教回應。
 - 回覆使用繁體中文，僅輸出 JSON。
 
 輸出格式：
@@ -721,6 +740,181 @@ const RULE_CONFIG = {
   ruleVersion:APP_META.ruleVersion,
   deduct:{error:2,warning:1,review:0}
 };
+
+
+// ═══════════════════════════════════════════════════
+//  Expected Findings：教科書參照層（不扣 Recording 分數）
+//  Primary: Carlson & Kurtz 4e, Table 2-8 / Table 4-1
+//  IOP teaching reference: Elliott 4e (Goldmann interpretation only)
+// ═══════════════════════════════════════════════════
+const EXPECTED_META = {
+  version:'Expected-v1.0-Carlson4e-T2-8-T4-1-ElliottIOP',
+  primary:'Carlson & Kurtz, Clinical Procedures for Ocular Examination, 4e',
+  alternative:'Elliott, Clinical Procedures in Primary Eye Care, 4e',
+  note:'Expected Findings 僅供教學比較，不等於 Recording 錯誤、疾病診斷或自動轉介門檻。'
+};
+
+function vaRatio(v){
+  if(isBlank(v)) return null;
+  const t=String(v).trim().toLowerCase().replace(/\s+/g,'');
+  if(/^(cf|hm|lp|nlp|lproj)/i.test(t)) return 0;
+  let m=t.match(/(20|6)\/(\d+(?:\.\d+)?)/);
+  if(m) return Number(m[1])/Number(m[2]);
+  m=t.match(/^([01](?:\.\d+)?|2(?:\.0+)?)$/);
+  if(m) return Number(m[1]);
+  const lm=t.match(/logmar[:=]?([+-]?\d+(?:\.\d+)?)/i);
+  if(lm) return Math.pow(10,-Number(lm[1]));
+  return null;
+}
+function scoreFraction(v){
+  if(isBlank(v)) return null;
+  const m=String(v).match(/(\d+)\s*\/\s*(\d+)/);
+  return m?{correct:Number(m[1]),total:Number(m[2])}:null;
+}
+function avgNums(arr){
+  const xs=(Array.isArray(arr)?arr:[]).map(num).filter(x=>x!==null);
+  return xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null;
+}
+function simpleXp(v){
+  if(isBlank(v)) return null;
+  const t=String(v).toUpperCase();
+  if(/ORTHO|NMD|NO MOVEMENT/.test(t)) return {value:0,kind:'XP'};
+  const m=t.match(/~?\s*(\d+(?:\.\d+)?)\s*(?:Δ|PD)?\s*(XP|XOP)\b/);
+  return m?{value:Number(m[1]),kind:m[2]}:null;
+}
+function expectedItem(code,label,observed,expected,status,source,note=''){
+  return {code,label,observed:String(observed??''),expected,status,source,note};
+}
+function compareExpectedFindings(r){
+  const items=[];
+  const A=r.A||{}, C=r.C||{}, D=r.D||{};
+  const age=num(A.age);
+  const src28='Carlson & Kurtz 4e, Table 2-8 Expected Findings for Entrance Tests';
+  const src41='Carlson & Kurtz 4e, Table 4-1 Expected Findings for Functional Tests';
+
+  // Best/final distance VA: expected 20/20 or better; inter-eye <= 1 line is shown as reference only.
+  ['OD','OS'].forEach(eye=>{
+    const v=D.final_va?.distance_vacc?.[eye] ?? D.VAcc?.distance?.[eye];
+    if(!isBlank(v)){
+      const ratio=vaRatio(v);
+      const status=ratio===null?'reference':(ratio>=1?'within':'attention');
+      items.push(expectedItem('VA_'+eye,`Distance VA ${eye}`,v,'20/20 或更佳（LogMAR 0.00 或更佳）',status,src28,'以最佳/最終矯正視力優先；VAsc 不直接視為異常判定。'));
+    }
+  });
+
+  const ct=C.cover_test||{};
+  [['distance','D',0,3,'1Δ XP，SD ±2Δ'],['near','N',0,6,'3Δ XP，SD ±3Δ']].forEach(([k,d,min,max,text])=>{
+    const raw=ct[k]?.value;
+    if(!isBlank(raw)){
+      const p=simpleXp(raw);
+      const status=p?(p.value>=min&&p.value<=max?'within':'attention'):'reference';
+      items.push(expectedItem('CT_'+d,`Cover Test ${d}`,raw,text,status,src28,'非單純 XP/Ortho notation 時保留作人工臨床判讀，不影響 Recording 分數。'));
+    }
+  });
+
+  const eom=C.eom_motility||{};
+  if(!isBlank(eom.status)||!isBlank(eom.detail)){
+    const t=`${eom.status||''} ${eom.detail||''}`.toUpperCase();
+    const status=/FESA|SAFE/.test(t)?'within':(/異常|ABNORMAL|UNDERACTION|OVERACTION|DIPLOPIA|INCOMIT/.test(t)?'attention':'reference');
+    items.push(expectedItem('EOM','EOM / Motility',`${eom.status||''}${eom.detail?' / '+eom.detail:''}`,'FESA（Full, Extensive, Smooth, Accurate）',status,src28));
+  }
+
+  const st=C.stereopsis||{};
+  const stereo=num(st.seconds_arc ?? st.threshold_arcsec);
+  if(stereo!==null || !isBlank(st.result_type)){
+    const observed=stereo!==null?`${stereo} sec arc`:(st.result_type||'');
+    const status=stereo===null?'reference':(stereo<=20?'within':'attention');
+    items.push(expectedItem('STEREO','Stereopsis',observed,'20 seconds of arc',status,src28,'不同 stereotest 的最小 disparity 不同；>20″ 僅提示與 Carlson 核心期望值比較。'));
+  }
+
+  const cv=C.color_vision||{};
+  if(!isBlank(cv.test)){
+    const od=scoreFraction(cv.od_score), os=scoreFraction(cv.os_score);
+    let status='reference';
+    if(/HRR/i.test(String(cv.test)) && od && os) status=(od.correct===od.total&&os.correct===os.total)?'within':'attention';
+    items.push(expectedItem('COLOR','Color Vision',`${cv.test} OD ${cv.od_score||'—'} / OS ${cv.os_score||'—'}`,'HRR #4 六片 screening：0 error、雙眼無差異',status,src28,'其他色覺測試依各測試原廠判讀標準。'));
+  }
+
+  const npc=C.npc||{};
+  if(num(npc.break_cm)!==null || num(npc.recovery_cm)!==null){
+    const b=num(npc.break_cm), rec=num(npc.recovery_cm);
+    const ok=(b!==null&&rec!==null&&b>=2.4&&b<=2.9&&rec>=4.2&&rec<=5.0);
+    items.push(expectedItem('NPC','Near Point of Convergence',`Break ${npc.break_cm??'—'} cm / Recovery ${npc.recovery_cm??'—'} cm`,'Break 2.4–2.9 cm；Recovery 4.2–5.0 cm',ok?'within':'attention',src28,'超出範圍只標示教科書參照差異，不直接診斷 convergence insufficiency。'));
+  }
+
+  const align=C.alignment_test||{};
+  if(!isBlank(align.result)){
+    const t=String(align.result).toUpperCase();
+    const status=/NO STRAB|SYMMETR|對稱|正常/.test(t)?'within':(/SOT|XOT|STRAB|偏/.test(t)?'attention':'reference');
+    items.push(expectedItem('HIRSCHBERG','Hirschberg / alignment screen',align.result,'Hirschberg：兩眼 corneal reflex 對稱',status,src28));
+  }
+
+  if(!isBlank(C.pupils?.value)){
+    const t=String(C.pupils.value).toUpperCase().replace(/\s/g,'');
+    const status=(t.includes('PERRL')&&(t.includes('-RAPD')||t.includes('NORAPD')))?'within':(/RAPD(OD|OS)|RAPD\+/.test(t)?'attention':'reference');
+    items.push(expectedItem('PUPILS','Pupils',C.pupils.value,'PERRL − RAPD',status,src28));
+  }
+
+  const vf=C.screening_vf||{};
+  if(!isBlank(vf.OD)||!isBlank(vf.OS)){
+    const both=`${vf.OD||''} ${vf.OS||''}`.toUpperCase();
+    const status=(/FULL|WNL|完整|正常/.test(String(vf.OD||'').toUpperCase())&&/FULL|WNL|完整|正常/.test(String(vf.OS||'').toUpperCase()))?'within':(/DEFECT|SCOT|缺損|異常/.test(both)?'attention':'reference');
+    items.push(expectedItem('VF','Screening Visual Fields',`OD ${vf.OD||'—'} / OS ${vf.OS||'—'}`,'OD full；OS full',status,src28));
+  }
+
+  const pdD=num(D.PD?.binocular?.distance), pdN=num(D.PD?.binocular?.near);
+  if(pdD!==null||pdN!==null) items.push(expectedItem('PD','Interpupillary Distance',`D ${pdD??'—'} / N ${pdN??'—'} mm`,'成人平均約 64/60 mm（D/N）','reference',src28,'PD 個體差異大，此值只作平均參照，不作異常旗標。'));
+
+  const amp=C.accommodation?.amplitude_D||{};
+  const ampVals=['OD','OS','OU'].filter(e=>num(amp[e])!==null);
+  if(ampVals.length){
+    if(age!==null){
+      const min=15-0.25*age, avg=18.5-0.30*age, max=25-0.40*age;
+      ampVals.forEach(eye=>{
+        const v=num(amp[eye]);
+        const status=v<min?'attention':'within';
+        items.push(expectedItem('AMP_'+eye,`Amplitude ${eye}`,`${v} D`,`Hofstetter：Min ${min.toFixed(2)} D / Avg ${avg.toFixed(2)} D / Max ${max.toFixed(2)} D`,status,src28,'低於 Hofstetter minimum 才標示 attention；方法差異仍需教師判讀。'));
+      });
+    }else{
+      items.push(expectedItem('AMP','Amplitude of Accommodation',ampVals.map(e=>`${e} ${amp[e]}D`).join(' / '),'需年齡才能計算 Hofstetter Min/Avg/Max','reference',src28,'V0.6.4 僅從 A 區讀取年齡，不保存其他 A 區個資。'));
+    }
+  }
+
+  const np=C.nra_pra||{};
+  if(num(np.nra_D)!==null||num(np.pra_D)!==null){
+    const nra=num(np.nra_D), pra=num(np.pra_D);
+    if(age!==null && age<40){
+      const nraOk=nra!==null&&nra>=1.5&&nra<=2.5;
+      const praOk=pra!==null&&pra<=-1.37&&pra>=-3.37;
+      items.push(expectedItem('NRA_PRA','NRA / PRA',`NRA ${np.nra_D??'—'} D / PRA ${np.pra_D??'—'} D`,'非老花：NRA +2.00±0.50 D；PRA −2.37±1.00 D',(nraOk&&praOk)?'within':'attention',src41,'只做 functional expected finding 比較，不等於診斷。'));
+    }else{
+      items.push(expectedItem('NRA_PRA','NRA / PRA',`NRA ${np.nra_D??'—'} D / PRA ${np.pra_D??'—'} D`,'老花者變異較大；適當 Add 時 NRA/PRA 絕對值趨於平衡，Add+NRA 不宜 > +2.50 D','reference',src41));
+    }
+  }
+
+  const iop=C.iop_nct||{};
+  const odAvg=avgNums(iop.OD?.readings), osAvg=avgNums(iop.OS?.readings);
+  if(odAvg!==null||osAvg!==null){
+    items.push(expectedItem('IOP','NCT / IOP',`NCT OD ${odAvg!==null?odAvg.toFixed(1):'—'} / OS ${osAvg!==null?osAvg.toFixed(1):'—'} mmHg（僅內部摘要）`,'Elliott：Goldmann 7–20 mmHg，兩眼差異 ≤4 mmHg','reference','Elliott 4e, Tonometry Interpretation','本表採 NCT；Goldmann 範圍不可直接當成 NCT 自動診斷/轉介門檻，且紙本仍保存三次原始值、不以平均取代。'));
+  }
+
+  const w4=C.worth4dot||{};
+  if(!isBlank(w4.distance)||!isBlank(w4.near)){
+    const t=`${w4.distance||''} ${w4.near||''} ${w4.interpretation||''}`.toUpperCase();
+    const status=/FUSION|4\s*DOT|4-DOT/.test(t)?'within':(/SUPP|DIPLOPIA|抑制|複視/.test(t)?'attention':'reference');
+    items.push(expectedItem('W4D','Worth 4 Dot',`DV ${w4.distance||'—'} / NV ${w4.near||'—'}`,'教學參照：D/N fusion、4 dots',status,'Carlson/Elliott Recording reference','此項不是 Carlson Table 2-8 的單一數值 cutoff。'));
+  }
+
+  const summary={
+    total:items.length,
+    within_count:items.filter(x=>x.status==='within').length,
+    attention_count:items.filter(x=>x.status==='attention').length,
+    reference_count:items.filter(x=>x.status==='reference').length,
+    age_used:age,
+    note:EXPECTED_META.note
+  };
+  return {version:EXPECTED_META.version,meta:EXPECTED_META,summary,items};
+}
 
 // ═══════════════════════════════════════════════════
 //  攝影機管理
@@ -980,7 +1174,7 @@ function safeJson(text){
 async function extractRecordWithGemini(images){
   const parts=[];
   images.forEach(img=>parts.push({inlineData:{mimeType:img.mime,data:img.b64}}));
-  parts.push({text:'請依固定 V3.3 兩頁表單版型辨識以上影像。A區個資完全忽略，只輸出指定 JSON。'});
+  parts.push({text:'請依固定 V3.3 兩頁表單版型辨識以上影像。A區只讀取年齡欄位供教科書期望值比較；姓名、出生日期、電話、地址、識別號等個資完全忽略，只輸出指定 JSON。'});
   const body={
     systemInstruction:{parts:[{text:EXTRACTION_PROMPT}]},
     contents:[{role:'user',parts}],
@@ -993,8 +1187,8 @@ async function extractRecordWithGemini(images){
   return safeJson(text);
 }
 
-async function generateFeedbackWithGemini(extracted, validation){
-  const payload={extracted_record:extracted,rule_validation:validation};
+async function generateFeedbackWithGemini(extracted, validation, expectedFindings){
+  const payload={extracted_record:extracted,rule_validation:validation,expected_findings:expectedFindings};
   const body={
     systemInstruction:{parts:[{text:FEEDBACK_PROMPT}]},
     contents:[{role:'user',parts:[{text:JSON.stringify(payload)}]}],
@@ -1172,29 +1366,34 @@ function validateRecord(r){
 async function submitScan(){
   const name=document.getElementById('s-name').value.trim();
   const seq=document.getElementById('s-seq').value.trim();
-  const className=document.getElementById('s-class').value.trim()||C.classDefault;
+  const className=document.getElementById('s-class').value.trim();
+  const courseName=document.getElementById('s-course').value.trim();
   if(!name||!seq){showToast('❗ 請填寫學生姓名與學號');return;}
+  if(!className||!courseName){showToast('❗ 請選擇班級與本次課程');return;}
   if(capturedFrames.length<2){showToast('❗ 請拍攝完整 V3.3 兩頁紀錄表');return;}
-  await doEvaluate(capturedFrames,name,seq,className,document.getElementById('s-note').value.trim(),'scanResult','camera');
+  await doEvaluate(capturedFrames,name,seq,className,courseName,document.getElementById('s-note').value.trim(),'scanResult','camera');
 }
 async function submitUpload(){
   const name=document.getElementById('u-name').value.trim();
   const seq=document.getElementById('u-seq').value.trim();
-  const className=document.getElementById('u-class').value.trim()||C.classDefault;
+  const className=document.getElementById('u-class').value.trim();
+  const courseName=document.getElementById('u-course').value.trim();
   if(!name||!seq){showToast('❗ 請填寫學生姓名與學號');return;}
+  if(!className||!courseName){showToast('❗ 請選擇班級與本次課程');return;}
   if(uploadedImgs.length<2){showToast('❗ 請上傳完整 V3.3 兩頁紀錄表');return;}
-  await doEvaluate(uploadedImgs,name,seq,className,document.getElementById('u-note').value.trim(),'uploadResult','upload');
+  await doEvaluate(uploadedImgs,name,seq,className,courseName,document.getElementById('u-note').value.trim(),'uploadResult','upload');
 }
 
-async function doEvaluate(images,name,seq,className,note,resultElemId,source){
+async function doEvaluate(images,name,seq,className,courseName,note,resultElemId,source){
   const el=document.getElementById(resultElemId);
   el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:14px;"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:13px;color:var(--muted);text-align:center;">步驟 1/4：AI 正在辨識 V3.3 與手寫紀錄...<br><span style="font-size:11px;">接著會進行規則檢核、個人化回饋與班級資料同步</span></div></div>`;
   try{
     const extracted=await extractRecordWithGemini(images);
-    el.querySelector('div div:last-child').innerHTML='步驟 2/4：V0.6 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
+    el.querySelector('div div:last-child').innerHTML='步驟 2/4：V0.6.5 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
     const validation=validateRecord(extracted);
-    el.querySelector('div div:last-child').innerHTML='步驟 3/4：AI 教學助教正在產生個人化修正建議...';
-    const feedback=await generateFeedbackWithGemini(extracted,validation);
+    const expectedFindings=compareExpectedFindings(extracted);
+    el.querySelector('div div:last-child').innerHTML='步驟 3/4：正在比對教科書 Expected Findings，並產生個人化修正建議...';
+    const feedback=await generateFeedbackWithGemini(extracted,validation,expectedFindings);
     const scores={
       completeness:validation.scores.completeness,
       format:validation.scores.format,
@@ -1205,13 +1404,13 @@ async function doEvaluate(images,name,seq,className,note,resultElemId,source){
     scores.total=scores.completeness+scores.format+scores.consistency+scores.clinical+scores.management;
     const level=scores.total>=90?'精熟':scores.total>=80?'良好':scores.total>=70?'基礎穩定':scores.total>=60?'待加強':'需優先補強';
     const recId=Date.now();
-    const attempt=records.filter(x=>String(x.seq)===String(seq)).length+1;
+    const attempt=records.filter(x=>String(x.seq)===String(seq)&&String(x.className||'')===String(className)&&String(x.course||'')===String(courseName)).length+1;
     const rec={
       id:recId,submissionId:`VOC-${recId}-${Math.random().toString(36).slice(2,8).toUpperCase()}`,
-      name,seq,className:className||'',course:C.course,attempt,source,note,reviewer:C.reviewer,
+      name,seq,className:className||'',course:courseName||'',attempt,source,note,reviewer:C.reviewer,
       submittedAt:new Date().toISOString(),date:new Date().toLocaleDateString('zh-TW'),time:new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),
       systemVersion:APP_META.systemVersion,formVersion:APP_META.formVersion,schemaVersion:APP_META.schemaVersion,ruleVersion:APP_META.ruleVersion,promptVersion:APP_META.promptVersion,model:C.gmodel,
-      scores,level,hasReview:validation.needsReview||!!feedback.teacher_review_needed,extracted,validation,feedback,imgCount:images.length,cloudSync:{status:'pending'}
+      scores,level,hasReview:validation.needsReview||!!feedback.teacher_review_needed||(expectedFindings.summary?.attention_count||0)>0,extracted,validation,expectedFindings,feedback,imgCount:images.length,cloudSync:{status:'pending'}
     };
     records.unshift(rec);saveRecords();
     try{await saveImgs(recId,images);}catch(e){console.warn('影像儲存失敗',e);}
@@ -1233,7 +1432,7 @@ function renderScoreResult(el,rec){
   el.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
       <div><div style="font-size:11px;color:var(--muted);margin-bottom:2px;">${esc(rec.name)}・${esc(rec.seq)}・${rec.date} ${rec.time}</div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><div class="score-badge">${s.total}<span class="score-label"> / 100</span></div><span class="badge ${levelClass(rec.level)}">${rec.level}</span>${rec.hasReview?'<span class="badge badge-warn">⚠️ 有項目需確認</span>':''}${rec.cloudSync?.status==='sent'?'<span class="badge badge-a">☁️ 班級資料已送出</span>':rec.cloudSync?.status==='failed'?'<span class="badge badge-warn">☁️ 同步待確認</span>':''}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><div class="score-badge">${s.total}<span class="score-label"> / 100</span></div><span class="badge ${levelClass(rec.level)}">${rec.level}</span>${rec.hasReview?'<span class="badge badge-warn">⚠️ 有項目需確認</span>':''}${(rec.expectedFindings?.summary?.attention_count||0)>0?`<span class="badge badge-warn">📚 期望值參照 ${rec.expectedFindings.summary.attention_count} 項需人工對照</span>`:''}${rec.cloudSync?.status==='sent'?'<span class="badge badge-a">☁️ 班級資料已送出</span>':rec.cloudSync?.status==='failed'?'<span class="badge badge-warn">☁️ 同步待確認</span>':''}</div></div>
       <button class="btn o" onclick="showDetail('${rec.id}')" style="font-size:12px;">🔍 詳細學習報告</button>
     </div>
     <div class="score-preview">
@@ -1267,11 +1466,26 @@ async function showDetail(id){
     <div class="card card-blue"><div class="card-title">📊 五面向學習表現</div>${bar('紀錄完整性',s.completeness,20)}${bar('格式正確性',s.format,20)}${bar('紀錄一致性',s.consistency,20)}${bar('臨床推理',s.clinical,25)}${bar('評估/處置/衛教',s.management,15)}<hr class="divider">${bar('總分',s.total,100)}</div>
     <div class="card"><div class="card-title">💬 AI 總結</div><div style="font-size:13px;line-height:1.8;">${esc(fb.overall_summary||'')}</div>${(fb.strengths||[]).length?`<div style="margin-top:8px;font-size:12px;"><b>做得好的地方：</b><br>${fb.strengths.map(x=>'✓ '+esc(x)).join('<br>')}</div>`:''}</div>
     <div class="card"><div class="card-title">⚙️ 規則引擎檢核</div>${ruleHtml}</div>
+    ${renderExpectedFindingsCard(rec.expectedFindings)}
     <div class="card"><div class="card-title">🧠 個人化教學回饋</div>${fbHtml||'<div style="color:var(--muted);font-size:12px;">無額外 AI 回饋。</div>'}</div>
     <div class="card"><div class="card-title">🎯 下一次優先練習</div><div style="font-size:12px;line-height:1.8;">${(fb.learning_priorities||[]).map((x,i)=>`${i+1}. ${esc(x)}`).join('<br>')||'—'}</div></div>`;
   document.getElementById('detailModal').classList.add('open');
 }
 function closeModal(){ document.getElementById('detailModal').classList.remove('open'); }
+
+function expectedStatusBadge(status){
+  if(status==='within') return '<span class="badge badge-a">✓ 符合參照</span>';
+  if(status==='attention') return '<span class="badge badge-warn">⚠ 需人工對照</span>';
+  return '<span class="badge badge-b">ⓘ 參考</span>';
+}
+function renderExpectedFindingsCard(exp){
+  if(!exp||!Array.isArray(exp.items)||!exp.items.length) return '<div class="card"><div class="card-title">📚 教科書 Expected Findings</div><div style="font-size:12px;color:var(--muted);">目前沒有可比較的教科書期望值。</div></div>';
+  const sum=exp.summary||{};
+  return `<div class="card"><div class="card-title">📚 教科書 Expected Findings（不扣 Recording 分數）</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:9px;">符合 ${sum.within_count||0}・需人工對照 ${sum.attention_count||0}・僅參考 ${sum.reference_count||0}。Expected Findings ≠ 診斷/轉介門檻。</div>
+    ${exp.items.map(x=>`<div style="padding:9px 10px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;font-size:12px;line-height:1.6;"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center;"><strong>${esc(x.label)}</strong>${expectedStatusBadge(x.status)}</div><div><b>目前：</b>${esc(x.observed||'—')}</div><div><b>教科書參照：</b>${esc(x.expected||'—')}</div>${x.note?`<div style="color:var(--muted);">${esc(x.note)}</div>`:''}<div style="font-size:10px;color:var(--muted);">${esc(x.source||'')}</div></div>`).join('')}
+  </div>`;
+}
 
 function markdownToHtml(md){
   if(!md) return '';
@@ -1402,7 +1616,7 @@ async function downloadPkg(id){
 // ─── 產生純文字評分報告 ───
 function buildReportTxt(rec){
   const s=rec.scores,fb=rec.feedback||{},issues=rec.validation?.issues||[];const line='═'.repeat(60),thin='─'.repeat(60);
-  return [line,'  馬偕醫護管理專科學校 視光學科','  AI 驗光紀錄輔助學習報告',line,'','【學生資料】',thin,`  姓名：${rec.name}`,`  學號：${rec.seq}`,`  教師/課程：${rec.reviewer}`,`  分析日期：${rec.date} ${rec.time}`,`  影像頁數：${rec.imgCount}`,rec.note?`  練習備註：${rec.note}`:'','','【五面向學習表現】',thin,`  紀錄完整性          ${s.completeness} / 20`,`  格式正確性          ${s.format} / 20`,`  紀錄一致性          ${s.consistency} / 20`,`  臨床推理            ${s.clinical} / 25`,`  評估/處置/衛教      ${s.management} / 15`,line,`  ★ 總分：${s.total} / 100　${rec.level}`,line,'','【規則引擎檢核】',thin,...(issues.length?issues.map(x=>`  ${x.severity.toUpperCase()}｜${x.code}｜${x.field}｜${x.message}${x.evidence?'｜'+x.evidence:''}`):['  ✓ 未發現明確規則錯誤']),'','【AI 個人化回饋】',thin,fb.overall_summary||'',...(fb.strengths||[]).map(x=>'  ✓ '+x),...(fb.priority_feedback||[]).flatMap(x=>['',`  ${x.severity.toUpperCase()}｜${x.title}`,`    依據：${x.evidence}`,`    原因：${x.why}`,`    修正：${x.how_to_fix}`,`    複習：${x.learning_topic}`]),'','【下一次優先練習】',thin,...(fb.learning_priorities||[]).map((x,i)=>`  ${i+1}. ${x}`),'',line,'  ※ 本報告用於教學回饋，不取代臨床診斷、醫療決策或教師最終評量。',`  ※ 規則版本：${rec.validation?.ruleVersion||'—'}｜產出時間：${new Date().toLocaleString('zh-TW')}`,line].join('\n');
+  return [line,'  馬偕醫護管理專科學校 視光學科','  AI 驗光紀錄輔助學習報告',line,'','【學生資料】',thin,`  姓名：${rec.name}`,`  學號：${rec.seq}`,`  教師/課程：${rec.reviewer}`,`  分析日期：${rec.date} ${rec.time}`,`  影像頁數：${rec.imgCount}`,rec.note?`  練習備註：${rec.note}`:'','','【五面向學習表現】',thin,`  紀錄完整性          ${s.completeness} / 20`,`  格式正確性          ${s.format} / 20`,`  紀錄一致性          ${s.consistency} / 20`,`  臨床推理            ${s.clinical} / 25`,`  評估/處置/衛教      ${s.management} / 15`,line,`  ★ 總分：${s.total} / 100　${rec.level}`,line,'','【規則引擎檢核】',thin,...(issues.length?issues.map(x=>`  ${x.severity.toUpperCase()}｜${x.code}｜${x.field}｜${x.message}${x.evidence?'｜'+x.evidence:''}`):['  ✓ 未發現明確規則錯誤']),'','【教科書 Expected Findings（不扣 Recording 分數）】',thin,...((rec.expectedFindings?.items||[]).length?rec.expectedFindings.items.flatMap(x=>[`  ${x.status==='within'?'✓':x.status==='attention'?'⚠':'ⓘ'} ${x.label}｜目前：${x.observed}`,`    參照：${x.expected}`,x.note?`    備註：${x.note}`:'']):['  —']),'','【AI 個人化回饋】',thin,fb.overall_summary||'',...(fb.strengths||[]).map(x=>'  ✓ '+x),...(fb.priority_feedback||[]).flatMap(x=>['',`  ${x.severity.toUpperCase()}｜${x.title}`,`    依據：${x.evidence}`,`    原因：${x.why}`,`    修正：${x.how_to_fix}`,`    複習：${x.learning_topic}`]),'','【下一次優先練習】',thin,...(fb.learning_priorities||[]).map((x,i)=>`  ${i+1}. ${x}`),'',line,'  ※ 本報告用於教學回饋，不取代臨床診斷、醫療決策或教師最終評量。',`  ※ 規則版本：${rec.validation?.ruleVersion||'—'}｜產出時間：${new Date().toLocaleString('zh-TW')}`,line].join('\n');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1432,12 +1646,39 @@ function exportCSV(){
 // ═══════════════════════════════════════════════════
 //  設定
 // ═══════════════════════════════════════════════════
+function parseOptionList(raw,fallback=[]){
+  const arr=String(raw||'').split(/[,，\n]/).map(x=>x.trim()).filter(Boolean);
+  return [...new Set(arr.length?arr:fallback)];
+}
+
+function fillSelect(id,options,value='',allowBlank=false,blankLabel='請選擇'){
+  const el=document.getElementById(id); if(!el) return;
+  const current=value||el.value||'';
+  el.innerHTML='';
+  if(allowBlank){
+    const op=document.createElement('option');op.value='';op.textContent=blankLabel;el.appendChild(op);
+  }
+  options.forEach(v=>{const op=document.createElement('option');op.value=v;op.textContent=v;el.appendChild(op);});
+  if(current && options.includes(current)) el.value=current;
+  else if(!allowBlank && options.length) el.value=options[0];
+  else el.value='';
+}
+
+function refreshClassCourseSelects(){
+  fillSelect('cfg-class',C.classOptions,C.classDefault,false);
+  fillSelect('cfg-course',C.courseOptions,C.course,false);
+  ['s-class','u-class'].forEach(id=>fillSelect(id,C.classOptions,'',true,'請選擇班級'));
+  ['s-course','u-course'].forEach(id=>fillSelect(id,C.courseOptions,'',true,'請選擇課程'));
+}
+
 function saveCfg(){
   C.gkey          = document.getElementById('cfg-gkey').value.trim();
   C.gmodel        = document.getElementById('cfg-gmodel').value;
   C.reviewer      = document.getElementById('cfg-reviewer').value.trim()||'李冠緯老師';
-  C.course        = document.getElementById('cfg-course').value.trim()||'視光學實驗';
-  C.classDefault  = document.getElementById('cfg-class').value.trim();
+  C.classOptions  = parseOptionList(document.getElementById('cfg-class-options').value,['視一甲','視二甲']);
+  C.courseOptions = parseOptionList(document.getElementById('cfg-course-options').value,['視光學實驗（一）','視光學實驗（二）','視光學實驗（三）']);
+  C.course        = document.getElementById('cfg-course').value.trim()||C.courseOptions[0]||'';
+  C.classDefault  = document.getElementById('cfg-class').value.trim()||C.classOptions[0]||'';
   C.quality       = document.getElementById('cfg-quality').value;
   C.sheetEndpoint = document.getElementById('cfg-sheet-endpoint').value.trim();
   C.sheetToken    = document.getElementById('cfg-sheet-token').value.trim();
@@ -1447,18 +1688,22 @@ function saveCfg(){
   localStorage.setItem('voc_reviewer',C.reviewer);
   localStorage.setItem('voc_course',C.course);
   localStorage.setItem('voc_class',C.classDefault);
+  localStorage.setItem('voc_class_options',JSON.stringify(C.classOptions));
+  localStorage.setItem('voc_course_options',JSON.stringify(C.courseOptions));
   localStorage.setItem('voc_quality',C.quality);
   localStorage.setItem('voc_sheet_endpoint',C.sheetEndpoint);
   localStorage.setItem('voc_sheet_token',C.sheetToken);
   localStorage.setItem('voc_sync_enabled',String(C.syncEnabled));
-  ['s-class','u-class'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=C.classDefault;});
+  refreshClassCourseSelects();
   showToast('✓ 設定已儲存');updateStatus();
 }
 
 function restoreCfg(){
   const s=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
   s('cfg-gkey',C.gkey);s('cfg-gmodel',C.gmodel);s('cfg-reviewer',C.reviewer);s('cfg-quality',C.quality);
-  s('cfg-course',C.course);s('cfg-class',C.classDefault);s('cfg-sheet-endpoint',C.sheetEndpoint);s('cfg-sheet-token',C.sheetToken);
+  s('cfg-sheet-endpoint',C.sheetEndpoint);s('cfg-sheet-token',C.sheetToken);
+  s('cfg-class-options',C.classOptions.join(', '));s('cfg-course-options',C.courseOptions.join(', '));
+  refreshClassCourseSelects();
   const cb=document.getElementById('cfg-sync-enabled');if(cb)cb.checked=C.syncEnabled;
 }
 
@@ -1471,7 +1716,7 @@ function buildSheetPayload(rec){
     class_name:rec.className||'',course:rec.course||C.course,reviewer:rec.reviewer||C.reviewer,student_name:rec.name,student_id:rec.seq,
     attempt:rec.attempt||1,source:rec.source||'',scores:rec.scores,level:rec.level,needs_review:!!rec.hasReview,issue_count:issueCodes.length,issue_codes:issueCodes,
     learning_priorities:rec.feedback?.learning_priorities||[],note:rec.note||'',img_count:rec.imgCount||0,extracted:rec.extracted,validation:rec.validation,feedback:rec.feedback,
-    user_agent:navigator.userAgent
+    expected_attention_count:rec.expectedFindings?.summary?.attention_count||0,expected_findings:rec.expectedFindings||null,user_agent:navigator.userAgent
   };
 }
 
@@ -1536,7 +1781,7 @@ function togglePass(inp,btn){
 function updateStatus(){
   const dot=document.getElementById('sdot'), txt=document.getElementById('stxt');
   if(C.gkey&&C.gkey.trim()){
-    dot.className='dot ok'; txt.textContent='V0.6.3・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
+    dot.className='dot ok'; txt.textContent='V0.6.4・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
   } else {
     dot.className='dot err'; txt.textContent='請設定 API Key';
   }
@@ -1643,13 +1888,13 @@ function showToast(m){
   updateStatus();
   updateAdminUI();
   renderRecords();
-  ['s-class','u-class'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=C.classDefault;});
+  refreshClassCourseSelects();
 })();
 </script>
 
 <div style="text-align:center;padding:18px 0 24px;font-size:11px;color:#bbb;">
   © 2026 Kuan-Wei Lee. All rights reserved.<br>
-  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.3 Beta<br>
+  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.5 Beta<br>
   <span style="font-size:10px;color:#ccc;">AI 回饋僅供教學使用，最終判定仍由授課教師確認</span>
 </div>
 </body>
