@@ -5,9 +5,10 @@
 <meta name="author" content="Kuan-Wei Lee">
 <meta name="copyright" content="© 2026 Kuan-Wei Lee. All rights reserved.">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI 驗光紀錄輔助學習系統 V0.6.6 Resilient Beta</title>
+<title>AI 驗光紀錄輔助學習系統 V0.7 Multi-user Classroom</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="app-config.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -163,7 +164,7 @@ table.rec tr:hover td{background:#f8f8f6;}
   <div class="topbar-brand">
     <div class="topbar-logo">👁</div>
     <div>
-      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.6.6 Resilient Beta</span></div>
+      <div class="topbar-title">AI 驗光紀錄輔助學習系統 <span style="font-size:10px;opacity:.75;font-family:var(--font-body);">V0.7 Multi-user Classroom</span></div>
       <div class="topbar-sub">馬偕醫護管理專科學校・視光學科｜V3.3 紙本紀錄辨識・規則檢核・個人化學習回饋・Google Sheet 班級資料</div>
     </div>
   </div>
@@ -397,28 +398,22 @@ table.rec tr:hover td{background:#f8f8f6;}
 ════════════════════════════════════════ -->
 <div class="page" id="page-cfg">
   <div class="card card-blue">
-    <div class="card-title" style="color:var(--primary);">🔑 Gemini API 設定（V0.6.6 Resilient：使用者自己的 Key）</div>
+    <div class="card-title" style="color:var(--primary);">☁️ V0.7 雲端 AI 後端（Multi-user Classroom）</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <div class="fg">
-        <label>Gemini API Key</label>
-        <div style="display:flex;gap:6px;">
-          <input type="password" id="cfg-gkey" placeholder="AQ... 或 AIza..." style="flex:1;">
-          <button class="btn o" onclick="togglePass('cfg-gkey','btn-eye')" id="btn-eye" style="padding:8px 12px;font-size:12px;">👁 顯示</button>
-        </div>
-        <div class="hint">V0.6.6 以 Gemini 3.5 Flash 作為主要辨識模型，優先兼顧固定表單辨識品質與吞吐量；遇到 429 / 5xx 暫時性錯誤時，系統會自動重試最多 4 次並加入隨機延遲，必要時自動切換至 Gemini 3.5 Flash-Lite 作為高吞吐量文件解析備援。學生不需要手動重傳表單。請勿把教師共用 Key 寫進 GitHub 原始碼。</div>
+      <div class="hint" style="font-size:13px;line-height:1.8;">
+        學生端不再輸入 Gemini API Key。所有 Gemini 請求改由 Cloudflare Worker 代理，API Key 僅保存在 Worker Secret；學生換任何電腦、手機或瀏覽器，只要開啟同一個 GitHub Pages 網址即可使用。
       </div>
       <div class="fg">
-        <label>使用模型</label>
-        <select id="cfg-gmodel">
-          <option value="gemini-3.5-flash">gemini-3.5-flash（主要模型・建議）</option>
-          <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite（高吞吐量文件解析・備援）</option>
-          <option value="gemini-3.6-flash">gemini-3.6-flash（研究比較）</option>
-          <option value="gemini-3.8-flash">gemini-3.8-flash（研究比較）</option>
-        </select>
+        <label>Cloud Backend Endpoint</label>
+        <input type="text" id="cfg-backend-endpoint" readonly>
+        <div class="hint">此網址由 GitHub 的 <code>app-config.js</code> 統一設定，不使用本機 localStorage。</div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>主要模型</label><input type="text" id="cfg-primary-model" readonly></div>
+        <div class="fg"><label>備援模型</label><input type="text" id="cfg-fallback-model" readonly></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button class="btn g" onclick="saveCfg()">💾 儲存設定</button>
-        <button class="btn o" onclick="testAPI()">🔌 測試 Gemini</button>
+        <button class="btn o" onclick="testAPI()">🔌 測試雲端 AI</button>
         <div id="cfgResult" style="font-size:12px;color:var(--muted);"></div>
       </div>
     </div>
@@ -427,37 +422,16 @@ table.rec tr:hover td{background:#f8f8f6;}
   <div class="card">
     <div class="card-title">☁️ Google Sheet 班級後台</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <div class="fg">
-        <label>Google Apps Script Web App URL</label>
-        <input type="url" id="cfg-sheet-endpoint" placeholder="https://script.google.com/macros/s/.../exec">
-        <div class="hint">分析完成後只同步去識別化的學習資料與 JSON，不上傳原始紀錄影像。</div>
+      <div class="hint" style="font-size:13px;line-height:1.8;">
+        Google Sheet 寫入也改由同一個雲端 Worker 轉送。Apps Script URL 與 CLASS_TOKEN 均由伺服器端管理，學生端不需要知道或輸入。
       </div>
       <div class="g2">
-        <div class="fg"><label>預設課程</label><select id="cfg-course"></select></div>
-        <div class="fg"><label>預設班級</label><select id="cfg-class"></select></div>
+        <div class="fg"><label>可選班級</label><input type="text" id="cfg-class-options" readonly></div>
+        <div class="fg"><label>可選課程</label><input type="text" id="cfg-course-options" readonly></div>
       </div>
-      <div class="g2">
-        <div class="fg">
-          <label>可選班級（逗號分隔）</label>
-          <input type="text" id="cfg-class-options" placeholder="視一甲, 視二甲">
-        </div>
-        <div class="fg">
-          <label>可選課程（逗號分隔）</label>
-          <input type="text" id="cfg-course-options" placeholder="視光學實驗（一）, 視光學實驗（二）, 視光學實驗（三）">
-        </div>
-      </div>
-      <div class="hint">建議所有班級共用同一個 Google Sheet；每次送出時由學生選擇「班級＋本次課程」，後台即可依兩個欄位分組統計。</div>
-      <div class="fg">
-        <label>班級同步碼（選填）</label>
-        <input type="password" id="cfg-sheet-token" placeholder="與 Apps Script 的 CLASS_TOKEN 相同">
-        <div class="hint">這不是高強度身分驗證，但可降低公開 Web App 被隨意寫入的機率。</div>
-      </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
-        <input type="checkbox" id="cfg-sync-enabled" checked> 分析完成後自動同步 Google Sheet
-      </label>
+      <div class="hint">全站班級與課程選項統一由 <code>app-config.js</code> 管理；更新 GitHub 後，所有學生裝置會一起套用。</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button class="btn g" onclick="saveCfg()">💾 儲存後台設定</button>
-        <button class="btn o" onclick="testSheetSync()">☁️ 測試送出</button>
+        <button class="btn o" onclick="testSheetSync()">☁️ 測試 Sheet 後端</button>
         <div id="sheetResult" style="font-size:12px;color:var(--muted);"></div>
       </div>
     </div>
@@ -468,7 +442,8 @@ table.rec tr:hover td{background:#f8f8f6;}
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div class="fg">
         <label>教師／評閱者（顯示於紀錄）</label>
-        <input type="text" id="cfg-reviewer" placeholder="例如：李冠緯老師">
+        <input type="text" id="cfg-reviewer" readonly>
+        <div class="hint">教師名稱為全站公開設定，請於 <code>app-config.js</code> 修改。</div>
       </div>
       <div class="fg">
         <label>攝影機影像品質</label>
@@ -483,14 +458,14 @@ table.rec tr:hover td{background:#f8f8f6;}
   </div>
 
   <div class="card card-warn">
-    <div class="card-title" style="color:var(--warn);">📌 V0.6.6 Resilient Classroom Pilot 說明</div>
+    <div class="card-title" style="color:var(--warn);">📌 V0.7 Multi-user Classroom Pilot 說明</div>
     <div style="font-size:12px;line-height:1.9;color:#5a4a00;">
       • 本系統辨識固定版型「眼睛及健康篩檢紀錄表 V3.3」，並以 Recording correctness 為主要規則標準。<br>
-      • V0.6.6 的 Expected Findings 僅供教科書參照，不自行建立疾病診斷或轉介門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
+      • Expected Findings 僅供教科書參照，不自行建立疾病診斷或轉介門檻；臨床判斷仍由教師／驗光專業人員確認。<br>
       • 原始影像只保存在目前裝置 IndexedDB；Google Sheet 僅接收學生學習資料、分數、規則結果與去識別化 JSON。<br>
       • A 區受檢者個人識別資料不納入 AI 結構化輸出。上傳前仍應採匿名或去識別化教學流程。<br>
       • 教師紀錄、學習分析與後台設定已加上 session 密碼鎖；此為前端存取控制，正式版仍應改用後端身分驗證。<br>
-      • V0.6.6 為課堂試跑版；正式 V1.0 預計改為 Backend / API Proxy，讓 Gemini Key 完全不進入學生瀏覽器。<br>
+      • V0.7 已採 Backend / API Proxy：Gemini Key、Google Sheet Web App URL 與 CLASS_TOKEN 不進入學生瀏覽器。<br>
       • © 2026 Kuan-Wei Lee. All rights reserved.
     </div>
   </div>
@@ -545,47 +520,35 @@ table.rec tr:hover td{background:#f8f8f6;}
 //  設定 & 資料
 // ═══════════════════════════════════════════════════
 const APP_META = {
-  systemVersion:'V0.6.6 Resilient Beta',
+  systemVersion:'V0.7 Multi-user Classroom',
   formVersion:'V3.3',
   schemaVersion:'3.3.1',
   ruleVersion:'V0.6.4-recording+expected-v3.3',
-  promptVersion:'V0.6.4-v3.3'
+  promptVersion:'V0.7-cloud-v3.3'
 };
 
-// 教師後台密碼：僅保存 SHA-256 雜湊，不在前端原始碼保存明文。
-// 注意：GitHub Pages 為純前端網站，此機制屬「介面存取控制」，不是伺服器級身分驗證。
+const PUBLIC_CFG = window.APP_CONFIG || {};
+
+// 教師後台密碼：前端 session lock 僅防一般學生誤入；真正秘密與權限由雲端後端管理。
 const ADMIN_PASSWORD_SHA256 = 'bd909746717410b829c3468e7dc837dbf55ddebeb83e47a033f9f0c3530423c1';
 const ADMIN_PROTECTED_PAGES = new Set(['records','stats','cfg']);
 let pendingAdminPage = 'cfg';
 
 let C = {
-  gkey:          localStorage.getItem('voc_gkey')          || '',
-  gmodel:        localStorage.getItem('voc_gmodel')        || 'gemini-3.5-flash',
-  reviewer:      localStorage.getItem('voc_reviewer')      || '李冠緯老師',
-  course:        localStorage.getItem('voc_course')        || '視光學實驗（一）',
-  classDefault:  localStorage.getItem('voc_class')         || '視一甲',
-  classOptions:  JSON.parse(localStorage.getItem('voc_class_options') || '["視一甲","視二甲"]'),
-  courseOptions: JSON.parse(localStorage.getItem('voc_course_options') || '["視光學實驗（一）","視光學實驗（二）","視光學實驗（三）"]'),
-  quality:       localStorage.getItem('voc_quality')       || 'medium',
-  sheetEndpoint: localStorage.getItem('voc_sheet_endpoint')|| '',
-  sheetToken:    localStorage.getItem('voc_sheet_token')   || '',
-  syncEnabled:   localStorage.getItem('voc_sync_enabled') !== 'false'
+  backendEndpoint: String(PUBLIC_CFG.backendEndpoint||'').replace(/\/$/,''),
+  gmodel:          PUBLIC_CFG.primaryModel || 'gemini-3.5-flash',
+  fallbackModel:   PUBLIC_CFG.fallbackModel || 'gemini-3.5-flash-lite',
+  reviewer:        PUBLIC_CFG.reviewer || '李冠緯老師',
+  course:          PUBLIC_CFG.defaultCourse || '視光學實驗（一）',
+  classDefault:    PUBLIC_CFG.defaultClass || '視一甲',
+  classOptions:    Array.isArray(PUBLIC_CFG.classOptions)&&PUBLIC_CFG.classOptions.length ? PUBLIC_CFG.classOptions : ['視一甲','視二甲'],
+  courseOptions:   Array.isArray(PUBLIC_CFG.courseOptions)&&PUBLIC_CFG.courseOptions.length ? PUBLIC_CFG.courseOptions : ['視光學實驗（一）','視光學實驗（二）','視光學實驗（三）'],
+  quality:         localStorage.getItem('voc_quality') || (PUBLIC_CFG.cameraQuality || 'medium'),
+  syncEnabled:     PUBLIC_CFG.syncEnabled !== false
 };
 
-// V0.6.6 模型遷移：舊版預設模型自動移至目前的高吞吐量主模型。
-const LEGACY_GEMINI_MODELS = new Set(['gemini-2.5-flash','gemini-2.5-flash-preview-05-20','gemini-2.0-flash','gemini-2.0-flash-001']);
-if (LEGACY_GEMINI_MODELS.has(C.gmodel)) {
-  C.gmodel = 'gemini-3.5-flash';
-  localStorage.setItem('voc_gmodel', C.gmodel);
-}
-// 從 V0.6.5 升級時，若仍保留當時的預設 3.6 Flash，只遷移一次到新的 3.5 Flash 主模型。
-if (!localStorage.getItem('voc_v066_model_migrated')) {
-  if (C.gmodel === 'gemini-3.6-flash') {
-    C.gmodel = 'gemini-3.5-flash';
-    localStorage.setItem('voc_gmodel', C.gmodel);
-  }
-  localStorage.setItem('voc_v066_model_migrated','true');
-}
+// 舊版瀏覽器若留有 Gemini Key / Sheet URL / Token，V0.7 載入時主動清除。
+['voc_gkey','voc_sheet_endpoint','voc_sheet_token'].forEach(k=>localStorage.removeItem(k));
 
 let records = JSON.parse(localStorage.getItem('voc_records') || '[]');
 function saveRecords(){ localStorage.setItem('voc_records', JSON.stringify(records)); }
@@ -713,7 +676,7 @@ Recording 主要標準：Carlson & Kurtz 4e；Elliott, Clinical Procedures in Pr
 
 const FEEDBACK_PROMPT = `你是視光學實驗課的 AI 教學回饋助教。你會收到：
 (1) V3.3 固定紙本表單辨識出的結構化 JSON；
-(2) V0.6.6 Recording Rule Engine 的 errors / warnings / review；
+(2) V0.7 Recording Rule Engine 的 errors / warnings / review；
 (3) 程式已計算的「完整性、格式正確性、紀錄一致性」分數；
 (4) Expected Findings 教科書參照結果（此層不扣 Recording 分數）。
 
@@ -1159,16 +1122,9 @@ function clearUploads(){
 // ═══════════════════════════════════════════════════
 //  Gemini API：固定表單辨識 + 教學回饋
 // ═══════════════════════════════════════════════════
-function geminiUrl(model=C.gmodel){
-  const key=(C.gkey||'').trim();
-  if(!key) throw new Error('請先在設定頁輸入 Gemini API Key');
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-}
-
-function geminiHeaders(key=C.gkey){
-  const k=(key||'').trim();
-  if(!k) throw new Error('請先在設定頁輸入 Gemini API Key');
-  return {'Content-Type':'application/json','x-goog-api-key':k};
+function backendUrl(path){
+  if(!C.backendEndpoint) throw new Error('系統尚未設定雲端後端，請教師更新 app-config.js 的 backendEndpoint');
+  return `${C.backendEndpoint}${path}`;
 }
 
 function safeJson(text){
@@ -1181,59 +1137,32 @@ function safeJson(text){
   }
 }
 
-const GEMINI_RETRY = {
-  maxAttempts:4,
-  primary:'gemini-3.5-flash',
-  fallback:'gemini-3.5-flash-lite',
-  retryableStatus:new Set([429,500,502,503,504]),
-  // 每個等待區間都會再加入隨機 jitter，避免全班同時重送又撞在一起。
-  delayWindows:[[1800,3200],[3800,6200],[7200,10500]]
-};
-
-function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
-function randomBetween(min,max){return Math.floor(min+Math.random()*(max-min+1));}
-function fallbackModelFor(primary){
-  return primary==='gemini-3.5-flash-lite' ? 'gemini-3.5-flash' : GEMINI_RETRY.fallback;
+async function cloudRequest(path,payload,{timeoutMs=90000}={}){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),timeoutMs);
+  try{
+    const resp=await fetch(backendUrl(path),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+      signal:ctrl.signal,
+      cache:'no-store'
+    });
+    const raw=await resp.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{};}catch(e){data={error:raw||`HTTP ${resp.status}`};}
+    if(!resp.ok) throw new Error(data.error||data.message||`雲端後端 HTTP ${resp.status}`);
+    return data;
+  }catch(e){
+    if(e.name==='AbortError') throw new Error('雲端 AI 處理逾時，請稍後再試');
+    throw e;
+  }finally{clearTimeout(timer);}
 }
-function friendlyGeminiError(status,detail=''){
-  if(status===429) return 'Gemini 目前請求量較高或已達暫時性速率限制。';
-  if([500,502,503,504].includes(status)) return 'Gemini 目前服務繁忙，屬於暫時性服務錯誤。';
-  if(status===404) return '目前選用的 Gemini 模型對此 API Key 不可用。';
-  if(status===401||status===403) return 'Gemini API Key 或存取權限驗證失敗。';
-  return `Gemini API HTTP ${status}${detail?`：${detail.slice(0,120)}`:''}`;
-}
 
-async function geminiRequest(body,{key=C.gkey,primaryModel=C.gmodel,onRetry=null,label='Gemini'}={}){
-  const models=[primaryModel,primaryModel,fallbackModelFor(primaryModel),fallbackModelFor(primaryModel)];
-  let lastError=null;
-  for(let i=0;i<GEMINI_RETRY.maxAttempts;i++){
-    const attempt=i+1;
-    const model=models[i];
-    try{
-      const resp=await fetch(geminiUrl(model),{method:'POST',headers:geminiHeaders(key),body:JSON.stringify(body)});
-      if(resp.ok){
-        const data=await resp.json();
-        return {data,modelUsed:model,attempts:attempt};
-      }
-      const detail=await resp.text();
-      const retryable=GEMINI_RETRY.retryableStatus.has(resp.status) || (resp.status===404 && model!==fallbackModelFor(primaryModel));
-      lastError=new Error(`${friendlyGeminiError(resp.status,detail)} [HTTP ${resp.status}]`);
-      lastError.status=resp.status;
-      lastError.detail=detail;
-      if(!retryable || attempt>=GEMINI_RETRY.maxAttempts) throw lastError;
-    }catch(err){
-      // fetch 本身的網路錯誤也視為暫時性錯誤；401/403 等 HTTP 非 retryable 已在上方直接丟出。
-      lastError=err;
-      if(err.status && !GEMINI_RETRY.retryableStatus.has(err.status) && err.status!==404) throw err;
-      if(attempt>=GEMINI_RETRY.maxAttempts) throw err;
-    }
-    const [min,max]=GEMINI_RETRY.delayWindows[Math.min(i,GEMINI_RETRY.delayWindows.length-1)];
-    const delay=randomBetween(min,max);
-    const nextModel=models[i+1];
-    if(typeof onRetry==='function') onRetry({attempt,nextAttempt:attempt+1,delay,model,currentModel:model,nextModel,label,error:lastError});
-    await sleep(delay);
-  }
-  throw lastError||new Error('Gemini 暫時無法完成請求');
+async function geminiRequest(body,{label='Gemini'}={}){
+  const result=await cloudRequest('/gemini',{body,label});
+  if(!result?.data) throw new Error(result?.error||'雲端 AI 未回傳資料');
+  return {data:result.data,modelUsed:result.modelUsed||C.gmodel,attempts:result.attempts||1};
 }
 
 function extractGeminiText(d){
@@ -1249,7 +1178,7 @@ async function extractRecordWithGemini(images,onRetry=null){
     contents:[{role:'user',parts}],
     generationConfig:{temperature:0,maxOutputTokens:12000,topP:0.8,responseMimeType:'application/json'}
   };
-  const result=await geminiRequest(body,{onRetry,label:'V3.3 表單辨識'});
+  const result=await geminiRequest(body,{label:'V3.3 表單辨識'});
   return {record:safeJson(extractGeminiText(result.data)),modelUsed:result.modelUsed,attempts:result.attempts};
 }
 
@@ -1260,7 +1189,7 @@ async function generateFeedbackWithGemini(extracted, validation, expectedFinding
     contents:[{role:'user',parts:[{text:JSON.stringify(payload)}]}],
     generationConfig:{temperature:0.15,maxOutputTokens:7000,topP:0.85,responseMimeType:'application/json'}
   };
-  const result=await geminiRequest(body,{onRetry,label:'AI 教學回饋'});
+  const result=await geminiRequest(body,{label:'AI 教學回饋'});
   return {feedback:safeJson(extractGeminiText(result.data)),modelUsed:result.modelUsed,attempts:result.attempts};
 }
 
@@ -1452,15 +1381,12 @@ async function doEvaluate(images,name,seq,className,courseName,note,resultElemId
   el.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;gap:14px;"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:13px;color:var(--muted);text-align:center;">步驟 1/4：AI 正在辨識 V3.3 與手寫紀錄...<br><span style="font-size:11px;">接著會進行規則檢核、個人化回饋與班級資料同步</span></div></div>`;
   try{
     const progressBox=()=>el.querySelector('div div:last-child');
-    const retryNotice=({nextAttempt,delay,currentModel,nextModel,label})=>{
-      const sec=(delay/1000).toFixed(1);
-      const switched=currentModel!==nextModel;
-      const box=progressBox();
-      if(box) box.innerHTML=`☁️ ${label}目前使用人數較多，系統正在自動重新嘗試（第 ${nextAttempt}/4 次）...<br><span style="font-size:11px;">約 ${sec} 秒後重試${switched?`，並切換至備援模型 ${nextModel}`:`・目前模型 ${currentModel}`}。請不要關閉頁面，也不需要重新上傳表單。</span>`;
-    };
+    const retryNotice=null;
+    const firstBox=progressBox();
+    if(firstBox) firstBox.innerHTML='步驟 1/4：雲端 AI 正在辨識 V3.3；若模型繁忙，後端會自動進行最多 4 次重試與備援切換...';
     const extractResult=await extractRecordWithGemini(images,retryNotice);
     const extracted=extractResult.record;
-    progressBox().innerHTML='步驟 2/4：V0.6.6 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
+    progressBox().innerHTML='步驟 2/4：V0.7 Recording Rule Engine 正在檢查完整性、格式與前後一致性...';
     const validation=validateRecord(extracted);
     const expectedFindings=compareExpectedFindings(extracted);
     progressBox().innerHTML='步驟 3/4：正在比對教科書 Expected Findings，並產生個人化修正建議...';
@@ -1493,7 +1419,7 @@ async function doEvaluate(images,name,seq,className,courseName,note,resultElemId
     showToast(`✓ 分析完成：${name}（${scores.total} 分）${rec.cloudSync.status==='sent'?'・已送出班級資料':''}`);
   }catch(e){
     const busy=/429|500|502|503|504|繁忙|速率限制|暫時/i.test(String(e.message||''));
-    el.innerHTML=`<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;font-size:13px;">❌ ${busy?'Gemini 目前仍然繁忙，4 次自動嘗試後尚未成功。':'分析失敗：'+esc(e.message)}<br><div style="font-size:11px;margin-top:6px;color:#c62828;line-height:1.7;">${busy?'你已上傳的表單仍保留在目前頁面，不需要重新上傳；稍後直接再次按「開始分析」即可。系統會再次採用隨機延遲與備援模型。':'請確認 API Key、網路、V3.3 影像品質與設定。'}</div></div>`;
+    el.innerHTML=`<div style="background:#ffebee;border-radius:10px;padding:16px;color:#b71c1c;font-size:13px;">❌ ${busy?'Gemini 目前仍然繁忙，4 次自動嘗試後尚未成功。':'分析失敗：'+esc(e.message)}<br><div style="font-size:11px;margin-top:6px;color:#c62828;line-height:1.7;">${busy?'你已上傳的表單仍保留在目前頁面，不需要重新上傳；稍後直接再次按「開始分析」即可。系統會再次採用隨機延遲與備援模型。':'請確認網路、V3.3 影像品質，或聯絡教師確認雲端後端狀態。'}</div></div>`;
     showToast(busy?'☁️ Gemini 暫時繁忙，表單已保留':'❌ 分析失敗');
   }
 }
@@ -1745,45 +1671,28 @@ function refreshClassCourseSelects(){
 }
 
 function saveCfg(){
-  C.gkey          = document.getElementById('cfg-gkey').value.trim();
-  C.gmodel        = document.getElementById('cfg-gmodel').value;
-  C.reviewer      = document.getElementById('cfg-reviewer').value.trim()||'李冠緯老師';
-  C.classOptions  = parseOptionList(document.getElementById('cfg-class-options').value,['視一甲','視二甲']);
-  C.courseOptions = parseOptionList(document.getElementById('cfg-course-options').value,['視光學實驗（一）','視光學實驗（二）','視光學實驗（三）']);
-  C.course        = document.getElementById('cfg-course').value.trim()||C.courseOptions[0]||'';
-  C.classDefault  = document.getElementById('cfg-class').value.trim()||C.classOptions[0]||'';
-  C.quality       = document.getElementById('cfg-quality').value;
-  C.sheetEndpoint = document.getElementById('cfg-sheet-endpoint').value.trim();
-  C.sheetToken    = document.getElementById('cfg-sheet-token').value.trim();
-  C.syncEnabled   = document.getElementById('cfg-sync-enabled').checked;
-  localStorage.setItem('voc_gkey',C.gkey);
-  localStorage.setItem('voc_gmodel',C.gmodel);
-  localStorage.setItem('voc_reviewer',C.reviewer);
-  localStorage.setItem('voc_course',C.course);
-  localStorage.setItem('voc_class',C.classDefault);
-  localStorage.setItem('voc_class_options',JSON.stringify(C.classOptions));
-  localStorage.setItem('voc_course_options',JSON.stringify(C.courseOptions));
-  localStorage.setItem('voc_quality',C.quality);
-  localStorage.setItem('voc_sheet_endpoint',C.sheetEndpoint);
-  localStorage.setItem('voc_sheet_token',C.sheetToken);
-  localStorage.setItem('voc_sync_enabled',String(C.syncEnabled));
-  refreshClassCourseSelects();
-  showToast('✓ 設定已儲存');updateStatus();
+  const q=document.getElementById('cfg-quality');
+  if(q){C.quality=q.value;localStorage.setItem('voc_quality',C.quality);}
+  showToast('✓ 本機攝影機偏好已儲存');
+  updateStatus();
 }
 
 function restoreCfg(){
-  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
-  s('cfg-gkey',C.gkey);s('cfg-gmodel',C.gmodel);s('cfg-reviewer',C.reviewer);s('cfg-quality',C.quality);
-  s('cfg-sheet-endpoint',C.sheetEndpoint);s('cfg-sheet-token',C.sheetToken);
-  s('cfg-class-options',C.classOptions.join(', '));s('cfg-course-options',C.courseOptions.join(', '));
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v??'';};
+  set('cfg-backend-endpoint',C.backendEndpoint||'尚未設定');
+  set('cfg-primary-model',C.gmodel);
+  set('cfg-fallback-model',C.fallbackModel);
+  set('cfg-class-options',C.classOptions.join('、'));
+  set('cfg-course-options',C.courseOptions.join('、'));
+  set('cfg-reviewer',C.reviewer);
+  set('cfg-quality',C.quality);
   refreshClassCourseSelects();
-  const cb=document.getElementById('cfg-sync-enabled');if(cb)cb.checked=C.syncEnabled;
 }
 
 function buildSheetPayload(rec){
   const issueCodes=(rec.validation?.issues||[]).map(x=>x.code);
   return {
-    type:'submission',class_token:C.sheetToken||'',submission_id:rec.submissionId||String(rec.id),client_timestamp:rec.submittedAt||new Date().toISOString(),
+    type:'submission',submission_id:rec.submissionId||String(rec.id),client_timestamp:rec.submittedAt||new Date().toISOString(),
     system_version:rec.systemVersion||APP_META.systemVersion,form_version:rec.formVersion||APP_META.formVersion,schema_version:rec.schemaVersion||APP_META.schemaVersion,
     rule_version:rec.validation?.ruleVersion||rec.ruleVersion||APP_META.ruleVersion,prompt_version:rec.promptVersion||APP_META.promptVersion,model:rec.model||C.gmodel,
     class_name:rec.className||'',course:rec.course||C.course,reviewer:rec.reviewer||C.reviewer,student_name:rec.name,student_id:rec.seq,
@@ -1794,14 +1703,13 @@ function buildSheetPayload(rec){
 }
 
 async function postSheetPayload(payload){
-  if(!C.sheetEndpoint) return {status:'skipped',message:'未設定 Google Sheet Web App URL'};
-  const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),9000);
+  if(!C.syncEnabled) return {status:'skipped',message:'雲端同步已關閉'};
   try{
-    await fetch(C.sheetEndpoint,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:ctrl.signal,cache:'no-store'});
-    return {status:'sent',message:'已送出（Apps Script 跨域模式無法由瀏覽器讀取回應）',at:new Date().toISOString()};
+    const data=await cloudRequest('/sheet',{payload},{timeoutMs:20000});
+    return {status:data.status||'sent',message:data.message||'Google Sheet 已接收',at:new Date().toISOString()};
   }catch(e){
-    return {status:'failed',message:e.name==='AbortError'?'同步逾時':e.message,at:new Date().toISOString()};
-  }finally{clearTimeout(timer);}
+    return {status:'failed',message:e.message,at:new Date().toISOString()};
+  }
 }
 
 async function syncRecordToSheet(rec){
@@ -1811,32 +1719,21 @@ async function syncRecordToSheet(rec){
 
 async function testSheetSync(){
   const el=document.getElementById('sheetResult');
-  saveCfg();
-  if(!C.sheetEndpoint){el.textContent='❌ 請先貼上 Apps Script Web App URL';el.style.color='var(--danger)';return;}
-  el.textContent='測試送出中...';el.style.color='var(--muted)';
-  const res=await postSheetPayload({type:'ping',class_token:C.sheetToken||'',client_timestamp:new Date().toISOString(),system_version:APP_META.systemVersion,user_agent:navigator.userAgent});
-  el.textContent=res.status==='sent'?'✅ 測試資料已送出；請到 Google Sheet 確認 SyncLog / Settings 狀態。':'❌ '+res.message;
-  el.style.color=res.status==='sent'?'var(--success)':'var(--danger)';
+  el.textContent='測試雲端 Sheet 後端中...';el.style.color='var(--muted)';
+  const res=await postSheetPayload({type:'ping',client_timestamp:new Date().toISOString(),system_version:APP_META.systemVersion,user_agent:navigator.userAgent});
+  el.textContent=res.status==='failed'?'❌ '+res.message:'✅ '+(res.message||'測試資料已送出；請到 SyncLog 確認');
+  el.style.color=res.status==='failed'?'var(--danger)':'var(--success)';
 }
 
 async function testAPI(){
   const el=document.getElementById('cfgResult');
-  el.textContent='測試中...';el.style.color='var(--muted)';
+  el.textContent='測試雲端 AI 中...';el.style.color='var(--muted)';
   try{
-    const key=document.getElementById('cfg-gkey').value||C.gkey;
-    const model=document.getElementById('cfg-gmodel').value||C.gmodel;
-    if(!key||!key.trim()) throw new Error('請輸入 Gemini API Key');
     const body={contents:[{role:'user',parts:[{text:'請只回覆：連線成功'}]}],generationConfig:{maxOutputTokens:20}};
-    const result=await geminiRequest(body,{key,primaryModel:model,label:'Gemini 連線測試',onRetry:({nextAttempt,delay,currentModel,nextModel})=>{
-      const sec=(delay/1000).toFixed(1);
-      el.textContent=`☁️ 服務繁忙，自動重試第 ${nextAttempt}/4 次（約 ${sec} 秒）${currentModel!==nextModel?`，切換備援 ${nextModel}`:''}`;
-      el.style.color='var(--accent)';
-    }});
+    const result=await geminiRequest(body,{label:'Gemini 連線測試'});
     const reply=extractGeminiText(result.data)||'(無回應)';
-    el.textContent=`✅ 連線成功：${reply}｜實際模型：${result.modelUsed}｜第 ${result.attempts} 次成功`; el.style.color='var(--success)';
-  }catch(e){
-    el.textContent='❌ '+e.message; el.style.color='var(--danger)';
-  }
+    el.textContent=`✅ ${reply}｜模型：${result.modelUsed}｜後端嘗試 ${result.attempts} 次`; el.style.color='var(--success)';
+  }catch(e){el.textContent='❌ '+e.message; el.style.color='var(--danger)';}
 }
 
 function togglePass(inp,btn){
@@ -1848,10 +1745,10 @@ function togglePass(inp,btn){
 
 function updateStatus(){
   const dot=document.getElementById('sdot'), txt=document.getElementById('stxt');
-  if(C.gkey&&C.gkey.trim()){
-    dot.className='dot ok'; txt.textContent='V0.6.6・Gemini '+C.gmodel.replace('gemini-','')+(C.sheetEndpoint?'・Sheet Ready':'');
+  if(C.backendEndpoint){
+    dot.className='dot ok'; txt.textContent='V0.7・Cloud AI・Multi-user'+(C.syncEnabled?'・Sheet':'');
   } else {
-    dot.className='dot err'; txt.textContent='請設定 API Key';
+    dot.className='dot err'; txt.textContent='V0.7・請設定雲端後端';
   }
 }
 function recheckStatus(){ updateStatus(); }
@@ -1962,7 +1859,7 @@ function showToast(m){
 
 <div style="text-align:center;padding:18px 0 24px;font-size:11px;color:#bbb;">
   © 2026 Kuan-Wei Lee. All rights reserved.<br>
-  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.6.6 Resilient Beta<br>
+  馬偕醫護管理專科學校・視光學科・AI 驗光紀錄輔助學習系統 V0.7 Multi-user Classroom<br>
   <span style="font-size:10px;color:#ccc;">AI 回饋僅供教學使用，最終判定仍由授課教師確認</span>
 </div>
 </body>
